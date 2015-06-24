@@ -1,6 +1,8 @@
-## This dissector is meant for Wireless 1.99.7
+# 6TiSCH/IEEE802.15.4e Wireshark dissectors
 
-This repo contains an altered IEEE802.15.4 dissector which can dissect:
+Note: developed for Wireshark 1.99.7
+
+This dissector is for:
 
 * IEEE802.15.4e
     * the updated FCF
