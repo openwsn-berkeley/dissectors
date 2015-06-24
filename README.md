@@ -31,7 +31,7 @@ On Windows 8.1 open the VS2013 shell by:
 * select "Visual Studio Tools"
 * selecting "VS2013 x64 Native Tools Command Prompt"
 
-to prepare the environment, verify and compile
+Prepare the environment, verify installation, setup and build:
 
 ```
 set CYGWIN=C:\cygwin64
@@ -40,10 +40,10 @@ set WIRESHARK_TARGET_PLATFORM=win64
 set QT5_BASE_DIR=C:\Qt\Qt5.4.2\5.4\msvc2013_64_opengl
 set WIRESHARK_VERSION_EXTRA=-tw
 set PATH=C:\cygwin64\bin;%PATH%
-
 cd C:\wireshark\wireshark-1.99.7
 
 nmake -f Makefile.nmake verify_tools
-
+nmake -f Makefile.nmake setup
 nmake -f Makefile.nmake all
+
 ```
