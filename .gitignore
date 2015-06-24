@@ -1,0 +1,8 @@
+# ignore everything
+*
+
+# except for these files
+!.gitignore
+!README.md
+!packet-ieee802154.c
+!packet-ieee802154.h
