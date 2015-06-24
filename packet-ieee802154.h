@@ -45,7 +45,24 @@
 #define IEEE802154_CMD_BCN_RQ               0x07
 #define IEEE802154_CMD_COORD_REAL           0x08
 #define IEEE802154_CMD_GTS_REQ              0x09
+#define IEEE802145_CMD_TRLE_MNGMT_REQ       0x0A
+#define IEEE802145_CMD_TRLE_MNGMT_RESP      0x0B
+#define IEEE802145_CMD_DSME_ASSOC_REQ       0x13
+#define IEEE802145_CMD_DSME_ASSOC_RESP      0x14
+#define IEEE802145_CMD_DSME_GTS_ASSOC_REQ   0x15
+#define IEEE802145_CMD_DSME_GTS_ASSOC_RESP  0x16
+#define IEEE802145_CMD_DSME_GTS_NOTIFY      0x17
+#define IEEE802145_CMD_DSME_INF_REQ         0x18
+#define IEEE802145_CMD_DSME_INF_RESP        0x19
+#define IEEE802145_CMD_DSME_BEACON_ALL_NOT  0x1A
+#define IEEE802145_CMD_DSME_BEACON_COLL_NOT 0x1B
+#define IEEE802145_CMD_DSME_LINK_REPORT     0x1C
+#define IEEE802145_CMD_RIT_DATA_REQ         0x20
+#define IEEE802145_CMD_DBS_REQ              0x21
+#define IEEE802145_CMD_DBS_RESP             0x22
+/* MODIFIED JMMS */
 #define IEEE802145_CMD_MAX_ID               0x09
+
 
 /*  Definitions for Association Response Command */
 #define IEEE802154_CMD_ASRSP_AS_SUCCESS     0x00
@@ -104,7 +121,9 @@
 #define IEEE802154_FCF_FRAME_PND            0x0010
 #define IEEE802154_FCF_ACK_REQ              0x0020
 #define IEEE802154_FCF_INTRA_PAN            0x0040  /* known as PAN ID Compression in IEEE 802.15.4-2006 */
-#define IEEE802154_FCF_DADDR_MASK           0x0C00  /* destination addressing mask */
+#define IEEE802154_FCF_SEQNR_SUPPR          0x0100  /* Sequence number suppression */               /* according to 2015 spec. */
+#define IEEE802154_FCF_IELIST_PRESENT       0x0200  /* if Information Elements inside the frame*/   /* according to 2015 spec. */
+#define IEEE802154_FCF_DADDR_MASK           0x0C00  /* destination addressing mask */               
 #define IEEE802154_FCF_VERSION              0x3000
 #define IEEE802154_FCF_SADDR_MASK           0xC000  /* source addressing mask */
 
@@ -113,11 +132,16 @@
 #define IEEE802154_FCF_DATA                 0x0001  /* Data Frame */
 #define IEEE802154_FCF_ACK                  0x0002  /* Acknowlegement Frame */
 #define IEEE802154_FCF_CMD                  0x0003  /* Command Frame */
+#define IEEE802154_FCF_RESERVED             0x0004  /* Reserved */
+#define IEEE802154_FCF_MULTIPURPOSE         0x0005  /* Multipurpose frame */        /* according to 2015 spec. */
+#define IEEE802154_FCF_FRAGMENT_FRAG        0x0006  /* Fragment or Frak frame */    /* according to 2015 spec. */
+#define IEEE802154_FCF_EXTENDED             0x0007  /* Extended frame */            /* according to 2015 spec. */
 
 /* Frame version definitions. */
 #define IEEE802154_VERSION_2003             0x0
 #define IEEE802154_VERSION_2006             0x1
-
+#define IEEE802154_VERSION_2015             0x2
+ 
 /* Address Mode Definitions */
 #define IEEE802154_FCF_ADDR_NONE            0x0000
 #define IEEE802154_FCF_ADDR_SHORT           0x0002
@@ -137,10 +161,63 @@
 #define IEEE802154_PHY_LENGTH_MASK          0x7f
 
 /* Auxiliary Security Header */
-#define IEEE802154_AUX_SEC_LEVEL_MASK       0x07  /* Security Level */
-#define IEEE802154_AUX_KEY_ID_MODE_MASK     0x18  /* Key Identifier Mode */
+#define IEEE802154_AUX_SEC_LEVEL_MASK       0x07    /* Security Level */
+#define IEEE802154_AUX_KEY_ID_MODE_MASK     0x18    /* Key Identifier Mode */
 #define IEEE802154_AUX_KEY_ID_MODE_SHIFT    3
-#define IEEE802154_AUX_KEY_RESERVED_MASK    0xE0  /* Reserved */
+#define IEEE802154_AUX_KEY_RESERVED_MASK    0xE0    /* Reserved */
+
+/* Header Information Elements' list */ /* according to 2015 spec. */
+#define IEEE802154_H_IE_DA_IE_VENDOR_SPECIFIC_HEADER  0x00
+#define IEEE802154_H_IE_DA                            0x19
+#define IEEE802154_H_IE_CSL                           0x1A
+#define IEEE802154_H_IE_RIT                           0x1B
+#define IEEE802154_H_IE_DSME_PAN_DESC                 0x1C
+#define IEEE802154_H_IE_RDV_TIME                      0x1D
+#define IEEE802154_H_IE_TIME_CORRECTION               0x1E
+#define IEEE802154_H_IE_EXT_DSME_PAN_DESC             0x21
+#define IEEE802154_H_IE_FSCD                          0x22
+#define IEEE802154_H_IE_SIMPL_SF_SPEC                 0x23
+#define IEEE802154_H_IE_SIMPL_GTS                     0x24
+#define IEEE802154_H_IE_LECIM_CAPAB                   0x25
+#define IEEE802154_H_IE_TRLE_DESC                     0x26
+#define IEEE802154_H_IE_RCC_CAPAB                     0x27
+#define IEEE802154_H_IE_RCCN_DESC                     0x28
+#define IEEE802154_H_IE_GLOBAL_TIME                   0x29
+#define IEEE802154_H_IE_HDR_TERM_1                    0x7E
+#define IEEE802154_H_IE_HDR_TERM_2                    0x7F
+
+/* Payload Information Elements' list */ /* according to 2015 spec. */
+#define IEEE802154_P_IE_ESDU                          0x0
+#define IEEE802154_P_IE_MLME                          0x1
+#define IEEE802154_P_IE_VENDOR_SPECIFIC               0x2
+#define IEEE802154_P_IE_PAYLOAD_TERM                  0xF
+
+/* MLME IE Sub-list */
+#define IEEE802154_P_IE_TSCH_SYNC                     0x1A
+#define IEEE802154_P_IE_TSCH_SLOTFR_LINK              0x1B
+#define IEEE802154_P_IE_TSCH_TIMESLOT                 0x1C
+#define IEEE802154_P_IE_HOPPING_TIMING                0x1D
+#define IEEE802154_P_IE_ENHACED_BEACON_FILTER         0x1E
+#define IEEE802154_P_IE_MAC_METRICS                   0x1F
+#define IEEE802154_P_IE_ALL_MAC_METRICS               0x20
+#define IEEE802154_P_IE_COEXISTENCE_SPEC              0x21
+#define IEEE802154_P_IE_SUN_DEVICE_CAPABILITIES       0x22
+#define IEEE802154_P_IE_SUN_FSK_GEN_PHY               0x23
+#define IEEE802154_P_IE_MODE_SWITCH_PARAMETER         0x24
+#define IEEE802154_P_IE_PHY_PARAMETER_CHANGE          0x25
+
+
+
+/* ---------------------------------------------------------------------  */
+/* Bit-mask for the Header Information's Elements header */
+#define IEEE802154_H_IE_LENGTH                      0x007F
+#define IEEE802154_H_IE_ID                          0x7F80
+#define IEEE802154_H_IE_TYPE                        0x8000
+
+/* Bit-mask for the Payload Information's Elements header */
+#define IEEE802154_P_IE_LENGTH                      0x07FF
+#define IEEE802154_P_IE_ID                          0x7800
+#define IEEE802154_P_IE_TYPE                        0x8000 
 
 typedef enum {
     SECURITY_LEVEL_NONE = 0x00,
@@ -176,6 +253,8 @@ typedef struct {
     gint32      dst_addr_mode;
     gint32      src_addr_mode;
     gboolean    security_enable;
+    gboolean    seqnr_suppresion;
+    gboolean    ielist_present;
     gboolean    frame_pending;
     gboolean    ack_request;
     gboolean    intra_pan;
@@ -195,6 +274,16 @@ typedef struct {
     ieee802154_key_id_mode      key_id_mode;
     guint32     frame_counter;
     guint8      key_sequence_counter;    /* Only for 802.15.4-2003 security suite with encryption */
+
+    /* Header Information Elements' header */
+    guint8      h_ie_content_lenght;
+    guint8      h_ie_id;
+    gboolean    h_ie_type;
+
+    /* Payload Information Elements' header */
+    guint16     p_ie_content_lenght;
+    guint8      p_ie_id;
+    gboolean    p_ie_type;
 
     union {
         guint32 addr32;
