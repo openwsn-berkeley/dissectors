@@ -187,10 +187,10 @@
 #define IEEE802154_H_IE_HDR_TERM_2                    0x7F
 
 /* Payload Information Elements' list */ /* according to 2015 spec. */
-#define IEEE802154_P_IE_ESDU                          0x0
-#define IEEE802154_P_IE_MLME                          0x1
-#define IEEE802154_P_IE_VENDOR_SPECIFIC               0x2
-#define IEEE802154_P_IE_PAYLOAD_TERM                  0xF
+#define IEEE802154_P_IE_ESDU                          0x00
+#define IEEE802154_P_IE_MLME                          0x01
+#define IEEE802154_P_IE_VENDOR_SPECIFIC               0x02
+#define IEEE802154_P_IE_PAYLOAD_TERM                  0x0F
 
 /* MLME IE Sub-list */
 #define IEEE802154_P_IE_TSCH_SYNC                     0x1A
@@ -205,8 +205,22 @@
 #define IEEE802154_P_IE_SUN_FSK_GEN_PHY               0x23
 #define IEEE802154_P_IE_MODE_SWITCH_PARAMETER         0x24
 #define IEEE802154_P_IE_PHY_PARAMETER_CHANGE          0x25
-
-
+#define IEEE802154_P_IE_O_QPSK_PHY_MODE               0x26
+#define IEEE802154_P_IE_PCA_ALLOCATION                0x27
+#define IEEE802154_P_IE_DSSS_OPER_MODE                0x28
+#define IEEE802154_P_IE_FSK_OPER_MODE                 0x29
+#define IEEE802154_P_IE_TVWS_PHY_OPE_MODE             0x2B
+#define IEEE802154_P_IE_TVWS_DEVICE_CAPAB             0x2C
+#define IEEE802154_P_IE_TVWS_DEVICE_CATEG             0x2D
+#define IEEE802154_P_IE_TVWS_DEVICE_IDENTIF           0x2E
+#define IEEE802154_P_IE_TVWS_DEVICE_LOCATION          0x2F
+#define IEEE802154_P_IE_TVWS_CH_INFOR_QUERY           0x30
+#define IEEE802154_P_IE_TVWS_CH_INFOR_SOURCE          0x31
+#define IEEE802154_P_IE_CTM                           0x32
+#define IEEE802154_P_IE_TIMESTAMP                     0x33
+#define IEEE802154_P_IE_TIMESTAMP_DIFF                0x34
+#define IEEE802154_P_IE_TMCP_SPECIFICATION            0x35
+#define IEEE802154_P_IE_RCC_PHY_OPER_MODE             0x36
 
 /* ---------------------------------------------------------------------  */
 /* Bit-mask for the Header Information's Elements header */
@@ -279,8 +293,9 @@ typedef struct {
     guint8      h_ie_content_lenght;
     guint8      h_ie_id;
     gboolean    h_ie_type;
+    gboolean    p_ie_present;
 
-    /* Payload Information Elements' header */
+    /* Payload Information Elements' payload */
     guint16     p_ie_content_lenght;
     guint8      p_ie_id;
     gboolean    p_ie_type;
