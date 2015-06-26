@@ -103,7 +103,7 @@ static const gchar *ieee802154_key_str = NULL;
 static gboolean     ieee802154_key_valid;
 static guint8       ieee802154_key[IEEE802154_CIPHER_SIZE];
 static const char  *ieee802154_user    = "User";
-
+char jambalaya;
 /*-------------------------------------
  * Address Hash Tables
  *-------------------------------------
@@ -401,8 +401,8 @@ static const value_string ieee802154_h_information_elements[] = {
     { IEEE802154_H_IE_RCCN_DESC, "RCCN Descriptor IE"},
     { IEEE802154_H_IE_GLOBAL_TIME, "Global Time IE" },
     { IEEE802154_H_IE_HDR_TERM_1, "Header Termination 1 IE" },
-    { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" },
-    { 0, NULL }
+    { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" }
+    /*{ 0, NULL }*/
 };
 
 static const value_string ieee802154_h_mlme_sub_short_information_elements[] = {
@@ -531,11 +531,14 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
     /* IEEE802154_FCS_LEN */
     gboolean condition;
     condition = TRUE;
+    
+
     /* fcs = tvb_get_letohs(tvb, tvb_reported_length(tvb)-IEEE802154_FCS_LEN);*/
 
     while (condition) {    
         guint16     header_ie;
         proto_tree *field_tree;
+        /*value_string pos;*/
 
         /* Get the information within the Information's Element header */ 
         header_ie = tvb_get_letohs(tvb, *offset);
@@ -544,6 +547,7 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         packet->h_ie_content_lenght = header_ie & IEEE802154_H_IE_LENGTH;
         packet->h_ie_id             = (header_ie & IEEE802154_H_IE_ID)  >> 7;
         packet->h_ie_type           = (header_ie & IEEE802154_H_IE_TYPE) >> 15;
+        
 
         /* Display the frame type. */
         /*proto_item_append_text(tree, " %s", val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "1"));
@@ -562,20 +566,50 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             proto_tree_add_uint(field_tree, hf_ieee802154_h_ie_id, tvb, (*offset), 1, header_ie & IEEE802154_H_IE_ID);
             proto_tree_add_boolean(field_tree, hf_ieee802154_h_ie_type, tvb, (*offset)+1, 1, header_ie & IEEE802154_H_IE_TYPE);
         }
+        /*pos = ieee802154_h_information_elements[packet->h_ie_id];*/
+        
+        switch(packet->h_ie_id) {
+
+        case IEEE802154_H_IE_HDR_TERM_1:
+            packet->p_ie_present = TRUE;
+            condition = FALSE;
+            *offset += (2 + packet->h_ie_content_lenght);
+            break;
+
+        case IEEE802154_H_IE_HDR_TERM_2:
+            condition = FALSE;
+            *offset += (2 + packet->h_ie_content_lenght);
+            break;
+
+        default:
+            if ( strcmp (val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown"),"Unknown") != 0 ) {
+                *offset += (2 + packet->h_ie_content_lenght);   
+             }
+            else {
+                condition = FALSE;
+            }
+            break;
+
+        }
+        /*
         if (((packet->h_ie_id) == IEEE802154_H_IE_HDR_TERM_1) || ((packet->h_ie_id) == IEEE802154_H_IE_HDR_TERM_2)) { 
 
             condition = FALSE;
             if ((packet->h_ie_id) == IEEE802154_H_IE_HDR_TERM_1) {
 
-                packet->p_ie_present = TRUE;    } }
-     
+                packet->p_ie_present = TRUE;    } } */
+             
         /* condition = FALSE; */ /* making to stop the IE header dissection */
 
-        *offset += (2 + packet->h_ie_content_lenght);
+        /**offset += (2 + packet->h_ie_content_lenght);*/
+        /*
+        if (val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown") == ) {
+            condition = FALSE;    
+        }*/
         /*if (*offset == (tvb_reported_length(tvb)-IEEE802154_FCS_LEN)){
             condition = FALSE;    
         }*/
-        condition = FALSE;
+        /* condition = FALSE; */
     
     }
 }
@@ -693,15 +727,45 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_id, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_ID);
             proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_type, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_TYPE);
              /* Header Information Elements header's values */
-          
+       
         }
-       /* if (((packet->p_ie_id) == IEEE802154_H_IE_HDR_TERM_1) || ((packet->p_ie_id) == IEEE802154_H_IE_HDR_TERM_2)) { 
+/*
+        if (is(packet->p_ie_id, ieee802154_p_information_elements)) {
 
-            condition = FALSE; } */
-        condition = FALSE; 
+        }*/
+        switch (packet->p_ie_id) {
 
-        *offset += (2 + packet->p_ie_content_lenght);
+        case IEEE802154_P_IE_PAYLOAD_TERM:
+            condition = FALSE;
+            *offset += (2 + packet->p_ie_content_lenght);
+            break;
+
+        default : 
+            if (strcmp (val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"),"Unknown") != 0) {
+                condition = FALSE;    
+            }
+            else {
+                *offset += (2 + packet->p_ie_content_lenght);    
+            }
+            break;
+
+            /*
+        default:
+            if (is(packet->p_ie_id, ieee802154_p_information_elements)) {
+                *offset += (2 + packet->p_ie_content_lenght);
+                break;        
+            }
+            else {
+                condition = FALSE;    
+            }  */    
+        }
+        /*
+        if (((packet->p_ie_id) == IEEE802154_P_IE_PAYLOAD_TERM)) { 
+
+            condition = FALSE; } 
         
+        *offset += (2 + packet->p_ie_content_lenght);
+        */
     }
 }
 /*FUNCTION:------------------------------------------------------
@@ -1232,9 +1296,9 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     if ((packet->frame_type == IEEE802154_FCF_ACK) && (packet->version == IEEE802154_VERSION_2015) && (packet->ielist_present)) {
         dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
         if (packet->p_ie_present) {
-                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
-                        
-            } 
+                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);              
+            }
+        /*goto dissect_ieee802154_fcs; */
     }
 
     if (packet->frame_type == IEEE802154_FCF_BEACON) {
@@ -1250,8 +1314,10 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             /* Information Elements analysis to be added */
             dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
             if (packet->p_ie_present) {
-                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);                             
-            } 
+                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
+               /* goto dissect_ieee802154_fcs; */                            
+            }
+          /*  else goto dissect_ieee802154_fcs; */
         }  
     }
     /* Only the Command ID is considered nonpayload. */ /* The Information Elements as well */
@@ -1260,8 +1326,10 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             /* Information Elements analysis to be added */
             dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
             if (packet->p_ie_present) {
-                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);                             
-            } 
+                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset); 
+             /*   goto dissect_ieee802154_fcs;      */                      
+            }
+        /*    else goto dissect_ieee802154_fcs; */
         }
 
         packet->command_id = tvb_get_guint8(tvb, offset);
@@ -1277,15 +1345,14 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     /* Other frames with non payload fields (i.e. Information Elements) */
     if ((packet->frame_type == IEEE802154_FCF_DATA) && (packet->ielist_present)) {
         /* Information Elements analysis to be added */
-        dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset); 
+        dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
         if (packet->p_ie_present) {
-                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);                             
+                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
+            /*  goto dissect_ieee802154_fcs; */                            
             }
+     /* else goto dissect_ieee802154_fcs; */       
     } 
 
-    if ((packet->frame_type == IEEE802154_FCF_ACK) && (packet->ielist_present)) {
-        /* Information Elements analysis to be added */
-    }
     /*=====================================================
      * PAYLOAD DISSECTION
      *=====================================================

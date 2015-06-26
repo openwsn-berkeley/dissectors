@@ -233,6 +233,16 @@
 #define IEEE802154_P_IE_ID                          0x7800
 #define IEEE802154_P_IE_TYPE                        0x8000 
 
+/* Bit-mask for the MLME Short Format of Nested IE */
+#define IEEE802154_P_MLME_SHORT_LENGTH              0x00FF
+#define IEEE802154_P_MLME_SHORT_ID                  0x7F00
+#define IEEE802154_P_MLME_SHORT_TYPE                0x8000
+
+/* Bit-mask for the MLME Long Format of Nested IE */
+#define IEEE802154_P_MLME_LONG_LENGTH               0x07FF
+#define IEEE802154_P_MLME_LONG_ID                   0x7800
+#define IEEE802154_P_MLME_LONG_TYPE                 0x8000 
+
 typedef enum {
     SECURITY_LEVEL_NONE = 0x00,
     SECURITY_LEVEL_MIC_32 = 0x01,
