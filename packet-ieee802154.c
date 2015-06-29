@@ -9,6 +9,10 @@
  * By Owen Kirby <osk@exegin.com>
  * Copyright 2007 Exegin Technologies Limited
  *
+ * IEEE 802.15.4 - TSCH options implemented 
+ * By Jonathan Munoz <jmmunoz86@gmail.com>
+ * 
+ *
  * Wireshark - Network traffic analyzer
  * By Gerald Combs <gerald@wireshark.org>
  * Copyright 1998 Gerald Combs
@@ -103,7 +107,6 @@ static const gchar *ieee802154_key_str = NULL;
 static gboolean     ieee802154_key_valid;
 static guint8       ieee802154_key[IEEE802154_CIPHER_SIZE];
 static const char  *ieee802154_user    = "User";
-char jambalaya;
 /*-------------------------------------
  * Address Hash Tables
  *-------------------------------------
@@ -182,6 +185,7 @@ static void dissect_ieee802154_gtsreq       (tvbuff_t *, packet_info *, proto_tr
 /* Dissector for the Infomation Elements */
 static void dissect_ieee802154_h_inf_elem     (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *); 
 static void dissect_ieee802154_p_inf_elem     (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *); 
+static void dissect_ieee802154_p_inf_elem_mlme (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *);
 
 /* Decryption helpers. */
 typedef enum {
@@ -298,6 +302,9 @@ static gint ett_ieee802154_gts_descriptors = -1;
 static gint ett_ieee802154_pendaddr = -1;
 static gint ett_ieee802154_h_ie = -1;
 static gint ett_ieee802154_p_ie = -1;
+static gint ett_ieee802154_mlme_sh_p_ie = -1;
+static gint ett_ieee802154_mlme_lg_p_ie = -1;
+
 
 static expert_field ei_ieee802154_invalid_addressing = EI_INIT;
 static expert_field ei_ieee802154_fcs = EI_INIT;
@@ -307,15 +314,26 @@ static expert_field ei_ieee802154_src = EI_INIT;
 
 static int ieee802_15_4_short_address_type = -1;
 
-/* Header Information Elements header values */
+/* Header Information Elements header's values */
 static int hf_ieee802154_h_ie_content_lenght = -1;
 static int hf_ieee802154_h_ie_id  = -1;
 static int hf_ieee802154_h_ie_type = -1;
 
-/* Header Information Elements header values */
+/* Payload Information Elements header's values */
 static int hf_ieee802154_p_ie_content_lenght = -1;
 static int hf_ieee802154_p_ie_id  = -1;
 static int hf_ieee802154_p_ie_type = -1;
+
+/* Payload MLME Information Elements header's values */
+static int hf_ieee802154_p_ie_mlme_sh_lenght = -1;
+static int hf_ieee802154_p_ie_mlme_sh_id  = -1;
+static int hf_ieee802154_p_ie_mlme_type = -1;
+static int hf_ieee802154_p_ie_mlme_lg_lenght = -1;
+static int hf_ieee802154_p_ie_mlme_lg_id  = -1;
+
+guint32 mlme_memory_counter = 0;
+guint32 mlme_type = 0;
+   
 
 
 /*
@@ -401,40 +419,46 @@ static const value_string ieee802154_h_information_elements[] = {
     { IEEE802154_H_IE_RCCN_DESC, "RCCN Descriptor IE"},
     { IEEE802154_H_IE_GLOBAL_TIME, "Global Time IE" },
     { IEEE802154_H_IE_HDR_TERM_1, "Header Termination 1 IE" },
-    { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" }
-    /*{ 0, NULL }*/
+    { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" },
+    { 0, NULL }
 };
 
 static const value_string ieee802154_h_mlme_sub_short_information_elements[] = {
-    { IEEE802154_P_IE_TSCH_SYNC, "TSCH Synchronization IE" },
-    { IEEE802154_P_IE_TSCH_SLOTFR_LINK, "TSCH Slotframe and Link IE" },
-    { IEEE802154_P_IE_TSCH_TIMESLOT, "TSCH Timeslot IE" },
-    { IEEE802154_P_IE_HOPPING_TIMING, "Hopping timing IE" },
-    { IEEE802154_P_IE_ENHACED_BEACON_FILTER, "Enhaced Beacon Filter IE" },
-    { IEEE802154_P_IE_MAC_METRICS, "MAC Metrics" },
-    { IEEE802154_P_IE_ALL_MAC_METRICS, "All MAC Metrics IE" },
-    { IEEE802154_P_IE_COEXISTENCE_SPEC, "Coexistence Specification IE" },
-    { IEEE802154_P_IE_SUN_DEVICE_CAPABILITIES, "SUN Device Capabilities IE" },
-    { IEEE802154_P_IE_SUN_FSK_GEN_PHY, "SUN FSK Generic PHY IE" },
-    { IEEE802154_P_IE_MODE_SWITCH_PARAMETER, "Mode Switch Parameter IE" },
-    { IEEE802154_P_IE_PHY_PARAMETER_CHANGE, "PHY Parameter Change IE" },
-    { IEEE802154_P_IE_O_QPSK_PHY_MODE, "O-QPSY PHY Mode IE" },
-    { IEEE802154_P_IE_PCA_ALLOCATION, "PCA Allocation IE" },
-    { IEEE802154_P_IE_DSSS_OPER_MODE, "DSSS Operating Mode IE"},
-    { IEEE802154_P_IE_FSK_OPER_MODE, "FSK Operating Mode IE" },
-    { IEEE802154_P_IE_TVWS_PHY_OPE_MODE, "TVWS PHY Operating Mode Description IE" },
-    { IEEE802154_P_IE_TVWS_DEVICE_CAPAB, "TVWS Device Capabilities IE" },
-    { IEEE802154_P_IE_TVWS_DEVICE_CATEG, "TVWS Device Category IE" },
-    { IEEE802154_P_IE_TVWS_DEVICE_IDENTIF, "TVWS Device Identification IE" },
-    { IEEE802154_P_IE_TVWS_DEVICE_LOCATION, "TVWS Device Location IE" },
-    { IEEE802154_P_IE_TVWS_CH_INFOR_QUERY, "TVWS Channel Information Query IE" },
-    { IEEE802154_P_IE_TVWS_CH_INFOR_SOURCE, "TVWS Channel Information Source IE" },
-    { IEEE802154_P_IE_CTM, "CTM IE" },
-    { IEEE802154_P_IE_TIMESTAMP, "Timestamp IE" },
-    { IEEE802154_P_IE_TIMESTAMP_DIFF, "Timestamp Difference IE"},
-    { IEEE802154_P_IE_TMCP_SPECIFICATION, "TMCTP Specification IE" },
-    { IEEE802154_P_IE_RCC_PHY_OPER_MODE, "RCC PHY Operating Mode IE" },
+    { IEEE802154_P_IE_TSCH_SYNC_SH, "TSCH Synchronization IE" },
+    { IEEE802154_P_IE_TSCH_SLOTFR_LINK_SH, "TSCH Slotframe and Link IE" },
+    { IEEE802154_P_IE_TSCH_TIMESLOT_SH, "TSCH Timeslot IE" },
+    { IEEE802154_P_IE_HOPPING_TIMING_SH, "Hopping timing IE" },
+    { IEEE802154_P_IE_ENHACED_BEACON_FILTER_SH, "Enhaced Beacon Filter IE" },
+    { IEEE802154_P_IE_MAC_METRICS_SH, "MAC Metrics" },
+    { IEEE802154_P_IE_ALL_MAC_METRICS_SH, "All MAC Metrics IE" },
+    { IEEE802154_P_IE_COEXISTENCE_SPEC_SH, "Coexistence Specification IE" },
+    { IEEE802154_P_IE_SUN_DEVICE_CAPABILITIES_SH, "SUN Device Capabilities IE" },
+    { IEEE802154_P_IE_SUN_FSK_GEN_PHY_SH, "SUN FSK Generic PHY IE" },
+    { IEEE802154_P_IE_MODE_SWITCH_PARAMETER_SH, "Mode Switch Parameter IE" },
+    { IEEE802154_P_IE_PHY_PARAMETER_CHANGE_SH, "PHY Parameter Change IE" },
+    { IEEE802154_P_IE_O_QPSK_PHY_MODE_SH, "O-QPSY PHY Mode IE" },
+    { IEEE802154_P_IE_PCA_ALLOCATION_SH, "PCA Allocation IE" },
+    { IEEE802154_P_IE_DSSS_OPER_MODE_SH, "DSSS Operating Mode IE"},
+    { IEEE802154_P_IE_FSK_OPER_MODE_SH, "FSK Operating Mode IE" },
+    { IEEE802154_P_IE_TVWS_PHY_OPE_MODE_SH, "TVWS PHY Operating Mode Description IE" },
+    { IEEE802154_P_IE_TVWS_DEVICE_CAPAB_SH, "TVWS Device Capabilities IE" },
+    { IEEE802154_P_IE_TVWS_DEVICE_CATEG_SH, "TVWS Device Category IE" },
+    { IEEE802154_P_IE_TVWS_DEVICE_IDENTIF_SH, "TVWS Device Identification IE" },
+    { IEEE802154_P_IE_TVWS_DEVICE_LOCATION_SH, "TVWS Device Location IE" },
+    { IEEE802154_P_IE_TVWS_CH_INFOR_QUERY_SH, "TVWS Channel Information Query IE" },
+    { IEEE802154_P_IE_TVWS_CH_INFOR_SOURCE_SH, "TVWS Channel Information Source IE" },
+    { IEEE802154_P_IE_CTM_SH, "CTM IE" },
+    { IEEE802154_P_IE_TIMESTAMP_SH, "Timestamp IE" },
+    { IEEE802154_P_IE_TIMESTAMP_DIFF_SH, "Timestamp Difference IE"},
+    { IEEE802154_P_IE_TMCP_SPECIFICATION_SH, "TMCTP Specification IE" },
+    { IEEE802154_P_IE_RCC_PHY_OPER_MODE_SH, "RCC PHY Operating Mode IE" },
     { 0, NULL }
+};
+
+static const value_string ieee802154_h_mlme_sub_long_information_elements[] = {
+    { IEEE802154_P_IE_VENDOR_SPECIFIC_LG, "Vendor Specific IE " },
+    { IEEE802154_P_IE_CHANNEL_HOPPING_LG, "Channel Hopping IE" },
+    { 0, NULL }    
 };
 
 static const value_string ieee802154_p_information_elements[] = {
@@ -591,25 +615,8 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             break;
 
         }
-        /*
-        if (((packet->h_ie_id) == IEEE802154_H_IE_HDR_TERM_1) || ((packet->h_ie_id) == IEEE802154_H_IE_HDR_TERM_2)) { 
+ 
 
-            condition = FALSE;
-            if ((packet->h_ie_id) == IEEE802154_H_IE_HDR_TERM_1) {
-
-                packet->p_ie_present = TRUE;    } } */
-             
-        /* condition = FALSE; */ /* making to stop the IE header dissection */
-
-        /**offset += (2 + packet->h_ie_content_lenght);*/
-        /*
-        if (val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown") == ) {
-            condition = FALSE;    
-        }*/
-        /*if (*offset == (tvb_reported_length(tvb)-IEEE802154_FCS_LEN)){
-            condition = FALSE;    
-        }*/
-        /* condition = FALSE; */
     
     }
 }
@@ -698,11 +705,13 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
     /* IEEE802154_FCS_LEN */
     gboolean condition;
     condition = TRUE;
+
+
     
     while (condition) {    
         guint16     payload_ie;
         proto_tree *field_tree;
-
+        
         /* Get the information within the Information's Element header */ 
         payload_ie = tvb_get_letohs(tvb, *offset);
 
@@ -740,34 +749,124 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             *offset += (2 + packet->p_ie_content_lenght);
             break;
 
+        case IEEE802154_P_IE_MLME:
+            *offset += 2;
+            packet->p_ie_mlme_present = TRUE;
+            condition = FALSE;            
+            break;
+            
+         /*   proto_tree *field_tree; */
         default : 
             if (strcmp (val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"),"Unknown") != 0) {
-                condition = FALSE;    
+            condition = FALSE;    
             }
             else {
-                *offset += (2 + packet->p_ie_content_lenght);    
+            *offset += (2 + packet->p_ie_content_lenght);    
             }
-            break;
+            break;    
 
-            /*
-        default:
-            if (is(packet->p_ie_id, ieee802154_p_information_elements)) {
-                *offset += (2 + packet->p_ie_content_lenght);
-                break;        
-            }
-            else {
-                condition = FALSE;    
-            }  */    
-        }
-        /*
-        if (((packet->p_ie_id) == IEEE802154_P_IE_PAYLOAD_TERM)) { 
 
-            condition = FALSE; } 
-        
-        *offset += (2 + packet->p_ie_content_lenght);
-        */
     }
+    } 
+    }
+/*FUNCTION:------------------------------------------------------
+ *  NAME
+ *      dissect_ieee802154_nonask_phy
+ *  DESCRIPTION
+ *      Dissector for IEEE 802.15.4 non-ASK PHY packet with an FCS containing
+ *      a 16-bit CRC value.
+ *
+ *  PARAMETERS
+ *      tvbuff_t *tvb       - pointer to buffer containing raw packet.
+ *      packet_info *pinfo  - pointer to packet information fields
+ *      proto_tree *tree    - pointer to data tree wireshark uses to display packet.
+ *  RETURNS
+ *      void
+ *---------------------------------------------------------------
+ */
+static void 
+dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee802154_packet *packet, guint *offset) 
+{
+    gboolean condition;
+    guint16 payload_ie;
+    condition = TRUE;
+
+    *offset -= 2;
+    payload_ie = tvb_get_letohs(tvb, *offset);
+    payload_ie = payload_ie & IEEE802154_P_IE_LENGTH;
+    *offset += 2;
+
+    while (condition){
+        
+        guint16     mlme_header;
+        proto_tree *field_tree;
+        
+        mlme_header = tvb_get_letohs(tvb, *offset);
+     
+        mlme_type  = (mlme_header & IEEE802154_P_MLME_TYPE) ; 
+    
+        if (mlme_type == IEEE802154_P_MLME_TYPE) { 
+
+            packet->p_ie_mlme_lg_lenght = mlme_header & IEEE802154_P_MLME_LONG_LENGTH;
+            packet->p_ie_mlme_lg_id     = (mlme_header & IEEE802154_P_MLME_LONG_ID)  >> 11;
+            packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15; 
+
+            mlme_memory_counter += 2 + packet->p_ie_mlme_lg_lenght;
+            if (mlme_memory_counter >= payload_ie) {
+                condition = FALSE;
+            }
+
+            proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_long_information_elements, "5"/*"Reserved"*/));
+            col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_long_information_elements, "6"/*"Reserved"*/));
+
+            if (tree) {
+            /*  Create the FCF subtree. */
+                field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_mlme_lg_p_ie, NULL,
+                "Long MLME Information Elements: %s (0x%04x)",
+                val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"), mlme_header);
+
+            /* Header Information Elements header's values */
+                proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_lg_lenght, tvb, (*offset), 1, mlme_header & IEEE802154_P_MLME_LONG_LENGTH);
+                proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_lg_id, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_MLME_LONG_ID);
+                proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
+
+                *offset += (2 + packet->p_ie_mlme_lg_lenght);
+        }
+    }
+
+        else {
+
+            packet->p_ie_mlme_sh_lenght = mlme_header & IEEE802154_P_MLME_SHORT_LENGTH;
+            packet->p_ie_mlme_sh_id     = (mlme_header & IEEE802154_P_MLME_SHORT_ID)  >> 8;
+            packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15;
+
+            mlme_memory_counter += 2 + packet->p_ie_mlme_lg_lenght;
+            if (mlme_memory_counter >= payload_ie) {
+                condition = FALSE;
+            }
+            proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "5"/*"Reserved"*/));
+            col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "6"/*"Reserved"*/));
+
+            if (tree) {
+            /*  Create the FCF subtree. */
+                field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_mlme_sh_p_ie, NULL,
+                "Short MLME Information Elements: %s (0x%04x)",
+                val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "Unknown"), mlme_header);
+
+                /* Header Information Elements header's values */
+                proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_sh_lenght, tvb, (*offset), 1, mlme_header & IEEE802154_P_MLME_SHORT_LENGTH);
+                proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_sh_id, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_MLME_SHORT_ID);
+                proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
+
+                *offset += (2 + packet->p_ie_mlme_sh_lenght);
+        }
+    }    
+       
+  
+    }
+
 }
+
 /*FUNCTION:------------------------------------------------------
  *  NAME
  *      dissect_ieee802154_nonask_phy
@@ -1296,8 +1395,12 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     if ((packet->frame_type == IEEE802154_FCF_ACK) && (packet->version == IEEE802154_VERSION_2015) && (packet->ielist_present)) {
         dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
         if (packet->p_ie_present) {
-                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);              
+                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset); 
+                if (packet->p_ie_mlme_present) {
+                    dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
+                }
             }
+
         /*goto dissect_ieee802154_fcs; */
     }
 
@@ -1315,6 +1418,9 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
             if (packet->p_ie_present) {
                 dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
+                if (packet->p_ie_mlme_present) {
+                    dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
+                }
                /* goto dissect_ieee802154_fcs; */                            
             }
           /*  else goto dissect_ieee802154_fcs; */
@@ -1327,6 +1433,9 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
             if (packet->p_ie_present) {
                 dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset); 
+                if (packet->p_ie_mlme_present) {
+                    dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
+                }
              /*   goto dissect_ieee802154_fcs;      */                      
             }
         /*    else goto dissect_ieee802154_fcs; */
@@ -1348,6 +1457,9 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
         dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
         if (packet->p_ie_present) {
                 dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
+                if (packet->p_ie_mlme_present) {
+                    dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
+                }
             /*  goto dissect_ieee802154_fcs; */                            
             }
      /* else goto dissect_ieee802154_fcs; */       
@@ -2817,7 +2929,7 @@ void proto_register_ieee802154(void)
 
         /* Payload Information Elements specific fields */
         { &hf_ieee802154_p_ie_content_lenght,
-        { "Information Element Length",                   "wpan.p_ie_content_length", FT_UINT8, BASE_HEX, NULL, 0x0,
+        { "Information Element Length",                   "wpan.p_ie_content_length", FT_UINT16, BASE_HEX, NULL, 0x0,
             NULL, HFILL }},
 
         { &hf_ieee802154_p_ie_id,
@@ -2825,9 +2937,37 @@ void proto_register_ieee802154(void)
             IEEE802154_P_IE_ID, NULL, HFILL }},   
 
         { &hf_ieee802154_p_ie_type,
-        { "Information Element type",                  "wpan.p_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
+        { "Information Element type",                  "wpan.p_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_MLME_TYPE,
             "Type 0 Header, Type 1 Payload.", HFILL }}, 
 /* ---------------------------------Information Elements added by jmms --------------------------------------------*/
+
+         /* MLME Short Payload Information Elements specific fields */
+        { &hf_ieee802154_p_ie_mlme_sh_lenght,
+        { "MLME Short Information Element Length",                   "wpan.p_ie_mlme_sh_lenght", FT_UINT16, BASE_HEX, NULL, 0x0,
+            NULL, HFILL }},
+
+        { &hf_ieee802154_p_ie_mlme_sh_id,
+        { "MLME Short Information Element ID",                     "wpan.p_ie_mlme_sh_id", FT_UINT16, BASE_HEX, VALS(ieee802154_h_mlme_sub_short_information_elements),
+            IEEE802154_P_IE_ID, NULL, HFILL }},   
+
+        /*{ &hf_ieee802154_p_ie_mlme_type,
+        { "MLME Short Information Element type",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
+            "Type 0 Short, Type 1 Long.", HFILL }}, */
+/* ---------------------------------Information Elements added by jmms --------------------------------------------*/   
+
+        /* MLME Short Payload Information Elements specific fields */
+        { &hf_ieee802154_p_ie_mlme_lg_lenght,
+        { "MLME Long Information Element Length",                   "wpan.p_ie_mlme_lg_lenght", FT_UINT16, BASE_HEX, NULL, 0x0,
+            NULL, HFILL }},
+
+        { &hf_ieee802154_p_ie_mlme_lg_id,
+        { "MLME Long Information Element ID",                     "wpan.p_ie_mlme_lg_id", FT_UINT16, BASE_HEX, VALS(ieee802154_h_mlme_sub_long_information_elements),
+            IEEE802154_P_IE_ID, NULL, HFILL }},   
+
+        { &hf_ieee802154_p_ie_mlme_type,
+        { "MLME Short Information Element type",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
+            "Type 0 Short, Type 1 Long.", HFILL }}, 
+/* ---------------------------------Information Elements added by jmms --------------------------------------------*/  
         { &hf_ieee802154_frame_length,
         { "Frame Length",                   "wpan.frame_length", FT_UINT8, BASE_DEC, NULL, 0x0,
             "Frame Length as reported from lower layer", HFILL }},
@@ -3111,7 +3251,9 @@ void proto_register_ieee802154(void)
         &ett_ieee802154_gts_descriptors,
         &ett_ieee802154_pendaddr,
         &ett_ieee802154_h_ie,
-        &ett_ieee802154_p_ie
+        &ett_ieee802154_p_ie,
+        &ett_ieee802154_mlme_sh_p_ie,
+        &ett_ieee802154_mlme_lg_p_ie
     };
 
     static ei_register_info ei[] = {
