@@ -57,8 +57,9 @@ nmake -f Makefile.nmake all
       * sudo apt-get install qt5-default
       * sudo apt-get install libqt5multimedia5 libqt5multimediawidgets5
    * Install GTK3
-      sudo apt-get install libgtk-3-dev
+      * sudo apt-get install libgtk-3-dev
    * Install libpcap
-      sudo apt-get install libpcap0.8-dev 
+      * sudo apt-get install libpcap0.8-dev 
+* Confiure and build
    * ./configure
    * ./make
