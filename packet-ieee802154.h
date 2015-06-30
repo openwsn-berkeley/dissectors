@@ -324,7 +324,7 @@ typedef struct {
     guint8      p_ie_mlme_sh_id;    
     guint16     p_ie_mlme_lg_lenght;
     guint8      p_ie_mlme_lg_id;
-    gint32      keep_dissecting;  
+    guint16     keep_dissecting;  
 
     union {
         guint32 addr32;

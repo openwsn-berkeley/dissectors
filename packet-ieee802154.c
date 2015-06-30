@@ -331,8 +331,8 @@ static int hf_ieee802154_p_ie_mlme_type = -1;
 static int hf_ieee802154_p_ie_mlme_lg_lenght = -1;
 static int hf_ieee802154_p_ie_mlme_lg_id  = -1;
 
-guint32 mlme_memory_counter = 0;
-guint32 mlme_type = 0;
+/*guint32 mlme_memory_counter = 0;
+guint32 mlme_type = 0;*/
    
 
 
@@ -791,37 +791,40 @@ static void
 dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee802154_packet *packet, guint *offset) 
 {
     gboolean condition;
-    guint16 payload_ie;
+    /*guint16 payload_ie;*/
     
     condition = TRUE;
-    payload_ie = 0;
-   /* *offset -= 2;
+    /*payload_ie = 0;*/
+    /* *offset -= 2;
     payload_ie = tvb_get_letohs(tvb, *offset);
     payload_ie = payload_ie & IEEE802154_P_IE_LENGTH;
-    *offset += 2;*/
+    *offset += 2;*/ 
+    packet->keep_dissecting = 0;
 
     while (condition){
         guint16     mlme_header;
         proto_tree *field_tree;
-        payload_ie += 1;
+        /*payload_ie += 1;*/
 
-                
         mlme_header = tvb_get_letohs(tvb, *offset);
-        mlme_type  = (mlme_header & IEEE802154_P_MLME_TYPE) ; 
+        /*
+        mlme_type  = (mlme_header & IEEE802154_P_MLME_TYPE) ; */
+        packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15; 
     
-        if (mlme_type == IEEE802154_P_MLME_TYPE) { 
+        if (packet->p_ie_mlme_type) { 
 
             packet->p_ie_mlme_lg_lenght = mlme_header & IEEE802154_P_MLME_LONG_LENGTH;
             packet->p_ie_mlme_lg_id     = (mlme_header & IEEE802154_P_MLME_LONG_ID)  >> 11;
-            packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15; 
+            
 
-            mlme_memory_counter += (2 + packet->p_ie_mlme_lg_lenght);
-            /*if (mlme_memory_counter >= payload_ie) {
-                condition = FALSE;
-            }*/
-            if (payload_ie >= 4) {
+            packet->keep_dissecting += (2 + packet->p_ie_mlme_lg_lenght);
+            /*mlme_memory_counter += (2 + packet->p_ie_mlme_lg_lenght);*/
+            if (packet->keep_dissecting >= packet->p_ie_content_lenght) {
                 condition = FALSE;
             }
+            /*if (payload_ie >= 4) {
+                condition = FALSE;
+            }*/
 
 
             proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "5"));
@@ -846,13 +849,17 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 
             packet->p_ie_mlme_sh_lenght = mlme_header & IEEE802154_P_MLME_SHORT_LENGTH;
             packet->p_ie_mlme_sh_id     = (mlme_header & IEEE802154_P_MLME_SHORT_ID)  >> 8;
-            packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15;
+            /*packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15;*/
 
-            mlme_memory_counter += 2 + packet->p_ie_mlme_lg_lenght;
+            /*mlme_memory_counter += 2 + packet->p_ie_mlme_lg_lenght;*/
             /*if (mlme_memory_counter >= payload_ie) {
                 condition = FALSE;
             }*/
-            if (payload_ie >= 4) {
+            /*if (payload_ie >= 4) {
+                condition = FALSE;
+            }*/
+            packet->keep_dissecting += (2 + packet->p_ie_mlme_sh_lenght);
+            if (packet->keep_dissecting >= packet->p_ie_content_lenght) {
                 condition = FALSE;
             }
 
