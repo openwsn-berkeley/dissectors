@@ -223,8 +223,8 @@
 #define IEEE802154_P_IE_RCC_PHY_OPER_MODE_SH          0x36
 
 /* MLME IE Long Sub-list */
-#define IEEE802154_P_IE_VENDOR_SPECIFIC_LG            0x1A
-#define IEEE802154_P_IE_CHANNEL_HOPPING_LG            0x1B
+#define IEEE802154_P_IE_VENDOR_SPECIFIC_LG            0x8
+#define IEEE802154_P_IE_CHANNEL_HOPPING_LG            0x9
 
 /* ---------------------------------------------------------------------  */
 /* Bit-mask for the Header Information's Elements header */
@@ -320,7 +320,8 @@ typedef struct {
     guint16     p_ie_mlme_sh_lenght;
     guint8      p_ie_mlme_sh_id;    
     guint16     p_ie_mlme_lg_lenght;
-    guint8      p_ie_mlme_lg_id;  
+    guint8      p_ie_mlme_lg_id;
+    gint32     keep_dissecting;  
 
     union {
         guint32 addr32;
