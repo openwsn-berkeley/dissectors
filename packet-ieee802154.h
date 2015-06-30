@@ -8,6 +8,9 @@
  * By Gerald Combs <gerald@wireshark.org>
  * Copyright 1998 Gerald Combs
  *
+ * IEEE 802.15.4 - TSCH options implemented 
+ * By Jonathan Munoz <jmmunoz86@gmail.com>
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -321,7 +324,7 @@ typedef struct {
     guint8      p_ie_mlme_sh_id;    
     guint16     p_ie_mlme_lg_lenght;
     guint8      p_ie_mlme_lg_id;
-    gint32     keep_dissecting;  
+    gint32      keep_dissecting;  
 
     union {
         guint32 addr32;
