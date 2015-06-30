@@ -2,12 +2,12 @@
 
 Note: developed for Wireshark 1.99.7
 
-This dissector is for:
+These dissectors extend the Wireshark IEEE802.15.4 dissectors with the following:
+* dissect the IEEE802.15.4 FCF for "version 2" frames (new in IEEE802.15.4e-2012)
+* dissect all Information Elements used in draft-6tisch-minimal
+* dissect IP-in-IP encapsulation
 
-* IEEE802.15.4e
-    * the updated FCF
-    * the following Information Elements
-        * TODO
+The source code of those dissectors is available as open-source code (BSD license). Although we are making final adjustments, you can use the code today. For now, you have to recompile Wireshark (instructions below); we will work on submitting this code to the Wireshark project once we are finished.
 
 # cloning
 
