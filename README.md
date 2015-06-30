@@ -52,8 +52,13 @@ nmake -f Makefile.nmake all
 
 * go to wireshark folder
 * make sure you have all dependencies.
-** Install Qt5  
-     sudo apt-get install qt5-default
-     sudo apt-get install libqt5multimedia5 libqt5multimediawidgets5
-** Install GTK3
-     sudo apt-get install libgtk-3-dev
+
+   * Install Qt5  
+      * sudo apt-get install qt5-default
+      * sudo apt-get install libqt5multimedia5 libqt5multimediawidgets5
+   * Install GTK3
+      sudo apt-get install libgtk-3-dev
+   * Install libpcap
+      sudo apt-get install libpcap0.8-dev 
+   * ./configure
+   * ./make
