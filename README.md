@@ -50,20 +50,19 @@ nmake -f Makefile.nmake all
 
 ## on Linux (Ubuntu)
 
-* go to wireshark folder
+* go to `wireshark/` folder
 * make sure you have all dependencies.
-
-   * Install Qt5  
-      * sudo apt-get install qt5-default
-      * sudo apt-get install libqt5multimedia5 libqt5multimediawidgets5
-   * Install GTK3
-      * sudo apt-get install libgtk-3-dev
-   * Install libpcap
-      * sudo apt-get install libpcap0.8-dev 
+    * Install `Qt5`
+        * `sudo apt-get install qt5-default`
+        * `sudo apt-get install libqt5multimedia5 libqt5multimediawidgets5`
+    * Install `GTK3`
+        * `sudo apt-get install libgtk-3-dev`
+    * Install `libpcap`
+        * `sudo apt-get install libpcap0.8-dev `
 * Confiure and build
-   * ./configure
-   * ./make
+    * `./configure`
+    * `./make`
 * Run 
-   * ./wireshark
+    * `./wireshark`
 * Or create the deb package
-   * dpkg-buildpackage -us -uc -rfakeroot
+    * `dpkg-buildpackage -us -uc -rfakeroot`
