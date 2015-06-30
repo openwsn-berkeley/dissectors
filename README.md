@@ -63,3 +63,7 @@ nmake -f Makefile.nmake all
 * Confiure and build
    * ./configure
    * ./make
+* Run 
+   * ./wireshark
+* Or create the deb package
+   * dpkg-buildpackage -us -uc -rfakeroot
