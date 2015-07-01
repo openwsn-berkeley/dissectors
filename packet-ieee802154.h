@@ -313,6 +313,7 @@ typedef struct {
     gboolean    h_ie_type;
     gboolean    p_ie_present;
 
+
     /* Payload Information Elements' payload */
     guint16     p_ie_content_lenght;
     guint8      p_ie_id;
@@ -325,7 +326,11 @@ typedef struct {
     guint8      p_ie_mlme_sh_id;    
     guint16     p_ie_mlme_lg_lenght;
     guint8      p_ie_mlme_lg_id;
-    guint16     keep_dissecting;  
+ 
+    /* utilities */
+    guint16     keep_dissecting;
+    guint16     keep_dissecting_p_ie;  
+    guint16     h_ie_size;
 
     union {
         guint32 addr32;

@@ -575,7 +575,7 @@ int size_header (ieee802154_packet *packet) {
     switch (packet->dst_addr_mode) {
     /* Short address*/
     case IEEE802154_FCF_ADDR_SHORT:
-        mac_header_size += 4;
+        mac_header_size += 2;
         /* Destination PAN exists */
         mac_header_size += 2;
         break;
@@ -645,6 +645,8 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
     gboolean condition;
     condition = TRUE;
     packet->keep_dissecting = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header (packet);
+    packet->h_ie_size = 0;
+    //packet->keep_dissecting_p_ie = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header(packet);
 
     /* fcs = tvb_get_letohs(tvb, tvb_reported_length(tvb)-IEEE802154_FCS_LEN);*/
 
@@ -662,7 +664,8 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         packet->h_ie_type           = (header_ie & IEEE802154_H_IE_TYPE) >> 15;
         
         packet->keep_dissecting -= (packet->h_ie_content_lenght + 2);
-
+        packet->h_ie_size += (packet->h_ie_content_lenght + 2);
+        //packet->keep_dissecting_p_ie -= (packet->h_ie_content_lenght + 2);
         /* Display the frame type. */
         proto_item_append_text(tree, " %s", val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "1"));
         col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "2"));
@@ -674,7 +677,7 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         if (tree) {
             /*  Create the FCF subtree. */
             field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_h_ie, NULL,
-                    "Information Elements: %s (0x%04x)",
+                    "Header Information Elements: %s (0x%04x)",
                     val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown"), header_ie);
 
             /* Header Information Elements header's values */
@@ -699,10 +702,8 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             break;
 
         default:
-            if (packet->keep_dissecting > 0) {
-                
-            }
-            else {
+            if (!packet->keep_dissecting > 0) {
+                    
                 condition = FALSE;    
             }
             break;
@@ -798,7 +799,8 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
     /* IEEE802154_FCS_LEN */
     gboolean condition;
     condition = TRUE;
-    
+    packet->keep_dissecting_p_ie = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header(packet) - packet->h_ie_size;
+
     while (condition) {    
         guint16     payload_ie;
         proto_tree *field_tree;
@@ -806,10 +808,12 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         /* Get the information within the Information's Element header */ 
         payload_ie = tvb_get_letohs(tvb, *offset);
 
-        /* Parse the Header IE header */
+        /* Parse the Payload IE header */
         packet->p_ie_content_lenght = payload_ie & IEEE802154_P_IE_LENGTH;
         packet->p_ie_id             = (payload_ie & IEEE802154_P_IE_ID)  >> 11;
         packet->p_ie_type           = (payload_ie & IEEE802154_P_IE_TYPE) >> 15;
+
+        packet->keep_dissecting_p_ie -= (packet->p_ie_content_lenght + 2);
 
         /* Display the frame type. */
         proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "3"/*"Reserved"*/));
@@ -818,51 +822,42 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "5"/*"Reserved"*/));
         col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "6"/*"Reserved"*/));
 
-        /* Add the Header Information Element's header to the protocol tree. */
+        /* Add the Payload Information Element's header to the protocol tree. */
         if (tree) {
             /*  Create the FCF subtree. */
             field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_p_ie, NULL,
-                    "Information Elements: %s (0x%04x)",
+                    "Payload Information Elements: %s (0x%04x)",
                     val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"), payload_ie);
 
-            /* Header Information Elements header's values */
+            /* Payload Information Elements header's values */
             proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_content_lenght, tvb, (*offset), 1, payload_ie & IEEE802154_P_IE_LENGTH);
             proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_id, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_ID);
             proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_type, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_TYPE);
-             /* Header Information Elements header's values */
-       
+                   
         }
-/*
-        if (is(packet->p_ie_id, ieee802154_p_information_elements)) {
-
-        }*/
+     
         switch (packet->p_ie_id) {
 
-        case IEEE802154_P_IE_PAYLOAD_TERM:
-            condition = FALSE;
-            *offset += (2 + packet->p_ie_content_lenght);
-            break;
+            case IEEE802154_P_IE_PAYLOAD_TERM:
+                condition = FALSE;
+                *offset += (2 + packet->p_ie_content_lenght);
+                break;
 
-        case IEEE802154_P_IE_MLME:
-            *offset += 2;
-            packet->p_ie_mlme_present = TRUE;
-            condition = FALSE;            
-            break;
-            
-         /*   proto_tree *field_tree; */
-        default : 
-            if (strcmp (val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"),"Unknown") != 0) {
+            case IEEE802154_P_IE_MLME:
+                *offset += 2;
+                dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, tree, packet, offset);
+                                           
+                break;
+            default : 
+                *offset += (2 + packet->p_ie_content_lenght);
+
+                break;    
+        }
+        if (packet->keep_dissecting_p_ie == 0){
             condition = FALSE;    
-            }
-            else {
-            *offset += (2 + packet->p_ie_content_lenght);    
-            }
-            break;    
-
-
-    }
+        }
     } 
-    }
+}
 /*FUNCTION:------------------------------------------------------
  *  NAME
  *      dissect_ieee802154_nonask_phy
@@ -881,25 +876,14 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
 static void 
 dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee802154_packet *packet, guint *offset) 
 {
-    gboolean condition;
-    /*guint16 payload_ie;*/
-    
-    condition = TRUE;
-    /*payload_ie = 0;*/
-    /* *offset -= 2;
-    payload_ie = tvb_get_letohs(tvb, *offset);
-    payload_ie = payload_ie & IEEE802154_P_IE_LENGTH;
-    *offset += 2;*/ 
+    gboolean conditionn;
+    conditionn = TRUE;
     packet->keep_dissecting = 0;
 
-    while (condition){
+    while (conditionn){
         guint16     mlme_header;
         proto_tree *field_tree;
-        /*payload_ie += 1;*/
-
         mlme_header = tvb_get_letohs(tvb, *offset);
-        /*
-        mlme_type  = (mlme_header & IEEE802154_P_MLME_TYPE) ; */
         packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15; 
     
         if (packet->p_ie_mlme_type) { 
@@ -907,17 +891,11 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
             packet->p_ie_mlme_lg_lenght = mlme_header & IEEE802154_P_MLME_LONG_LENGTH;
             packet->p_ie_mlme_lg_id     = (mlme_header & IEEE802154_P_MLME_LONG_ID)  >> 11;
             
-
             packet->keep_dissecting += (2 + packet->p_ie_mlme_lg_lenght);
             /*mlme_memory_counter += (2 + packet->p_ie_mlme_lg_lenght);*/
             if (packet->keep_dissecting >= packet->p_ie_content_lenght) {
-                condition = FALSE;
+                conditionn = FALSE;
             }
-            /*if (payload_ie >= 4) {
-                condition = FALSE;
-            }*/
-
-
             proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "5"));
             col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "6"));
 
@@ -927,7 +905,7 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 "Long MLME Information Elements: %s (0x%04x)",
                 val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"), mlme_header);
 
-            /* Header Information Elements header's values */
+            /* MLME IE Information Elements header's values */
                 proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_lg_lenght, tvb, (*offset), 1, mlme_header & IEEE802154_P_MLME_LONG_LENGTH);
                 proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_lg_id, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_MLME_LONG_ID);
                 proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
@@ -940,18 +918,10 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 
             packet->p_ie_mlme_sh_lenght = mlme_header & IEEE802154_P_MLME_SHORT_LENGTH;
             packet->p_ie_mlme_sh_id     = (mlme_header & IEEE802154_P_MLME_SHORT_ID)  >> 8;
-            /*packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15;*/
-
-            /*mlme_memory_counter += 2 + packet->p_ie_mlme_lg_lenght;*/
-            /*if (mlme_memory_counter >= payload_ie) {
-                condition = FALSE;
-            }*/
-            /*if (payload_ie >= 4) {
-                condition = FALSE;
-            }*/
+            
             packet->keep_dissecting += (2 + packet->p_ie_mlme_sh_lenght);
             if (packet->keep_dissecting >= packet->p_ie_content_lenght) {
-                condition = FALSE;
+                conditionn = FALSE;
             }
 
             proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "5"/*"Reserved"*/));
@@ -969,12 +939,9 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
 
                 *offset += 2 + packet->p_ie_mlme_sh_lenght;
-        }
-    }    
-       
-  
+            }
+        }                
     }
-
 }
 
 /*FUNCTION:------------------------------------------------------
@@ -1506,9 +1473,9 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
         dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
         if (packet->p_ie_present) {
                 dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset); 
-                if (packet->p_ie_mlme_present) {
+                /*if (packet->p_ie_mlme_present) {
                     dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
-                }
+                }*/
             }
 
         /*goto dissect_ieee802154_fcs; */
@@ -1528,9 +1495,9 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
             if (packet->p_ie_present) {
                 dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
-                if (packet->p_ie_mlme_present) {
+                /*if (packet->p_ie_mlme_present) {
                     dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
-                }
+                }*/
                /* goto dissect_ieee802154_fcs; */                            
             }
           /*  else goto dissect_ieee802154_fcs; */
@@ -1543,9 +1510,9 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
             if (packet->p_ie_present) {
                 dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset); 
-                if (packet->p_ie_mlme_present) {
+                /*if (packet->p_ie_mlme_present) {
                     dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
-                }
+                }*/
              /*   goto dissect_ieee802154_fcs;      */                      
             }
         /*    else goto dissect_ieee802154_fcs; */
@@ -1567,9 +1534,9 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
         dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
         if (packet->p_ie_present) {
                 dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
-                if (packet->p_ie_mlme_present) {
+                /*if (packet->p_ie_mlme_present) {
                     dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
-                }
+                }*/
             /*  goto dissect_ieee802154_fcs; */                            
             }
      /* else goto dissect_ieee802154_fcs; */       
