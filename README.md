@@ -46,6 +46,8 @@ nmake -f Makefile.nmake verify_tools
 nmake -f Makefile.nmake setup
 nmake -f Makefile.nmake all
 
+nmake -f Makefile.nmake packaging
+
 ```
 
 ## on Linux (Ubuntu)
