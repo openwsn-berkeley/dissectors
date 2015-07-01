@@ -6,3 +6,4 @@
 !README.md
 !packet-ieee802154.c
 !packet-ieee802154.h
+!packet-ieee802154.VERSION
