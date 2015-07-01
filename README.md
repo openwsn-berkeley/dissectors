@@ -38,13 +38,15 @@ set CYGWIN=C:\cygwin64
 set WIRESHARK_BASE_DIR=C:\wireshark\wireshark-1.99.7
 set WIRESHARK_TARGET_PLATFORM=win64
 set QT5_BASE_DIR=C:\Qt\Qt5.4.2\5.4\msvc2013_64_opengl
-set WIRESHARK_VERSION_EXTRA=-tw
+set WIRESHARK_VERSION_EXTRA=-6tisch_0.1
 set PATH=C:\cygwin64\bin;%PATH%
 cd C:\wireshark\wireshark-1.99.7
 
 nmake -f Makefile.nmake verify_tools
 nmake -f Makefile.nmake setup
 nmake -f Makefile.nmake all
+
+nmake -f Makefile.nmake packaging
 
 ```
 
