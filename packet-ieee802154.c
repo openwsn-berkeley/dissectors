@@ -1198,13 +1198,26 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     COPY_ADDRESS_SHALLOW(&pinfo->src, &pinfo->net_src);
 
     /* Get and display the destination PAN, if present. */
-    if ( (packet->dst_addr_mode == IEEE802154_FCF_ADDR_SHORT) ||
-         (packet->dst_addr_mode == IEEE802154_FCF_ADDR_EXT) ) {
-        packet->dst_pan = tvb_get_letohs(tvb, offset);
-        if (tree) {
-            proto_tree_add_uint(ieee802154_tree, hf_ieee802154_dst_panID, tvb, offset, 2, packet->dst_pan);
+    if (packet->version <= IEEE802154_VERSION_2006) {
+        if ( (packet->dst_addr_mode == IEEE802154_FCF_ADDR_SHORT) ||
+             (packet->dst_addr_mode == IEEE802154_FCF_ADDR_EXT) ) {
+
+            packet->dst_pan = tvb_get_letohs(tvb, offset);
+            if (tree) {
+                proto_tree_add_uint(ieee802154_tree, hf_ieee802154_dst_panID, tvb, offset, 2, packet->dst_pan);
+            }
+            offset += 2;
         }
-        offset += 2;
+    } else if (packet->version == IEEE802154_VERSION_2015) {
+        if ( ((packet->dst_addr_mode >= IEEE802154_FCF_ADDR_SHORT) && (!packet->intra_pan)) ||
+             ((packet->dst_addr_mode < IEEE802154_FCF_ADDR_SHORT) && (packet->src_addr_mode < IEEE802154_FCF_ADDR_SHORT) && (packet->intra_pan)) )  {
+
+            packet->dst_pan = tvb_get_letohs(tvb, offset);
+            if (tree) {
+                proto_tree_add_uint(ieee802154_tree, hf_ieee802154_dst_panID, tvb, offset, 2, packet->dst_pan);
+            }
+            offset += 2;
+        }
     }
 
     /* Get destination address. */
@@ -1270,24 +1283,36 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
      *  - The Source addressing exists and
      *  - The Destination addressing doesn't exist, or the Intra-PAN bit is unset.
      */
-    if ( ((packet->src_addr_mode == IEEE802154_FCF_ADDR_SHORT) || (packet->src_addr_mode == IEEE802154_FCF_ADDR_EXT)) &&
-         ((packet->dst_addr_mode == IEEE802154_FCF_ADDR_NONE) || (!packet->intra_pan)) ) {
-        /* Source PAN is present, extract it and add it to the tree. */
-        packet->src_pan = tvb_get_letohs(tvb, offset);
-        if (tree) {
-            proto_tree_add_uint(ieee802154_tree, hf_ieee802154_src_panID, tvb, offset, 2, packet->src_pan);
+    if (packet->version <= IEEE802154_VERSION_2006) {
+        if ( ((packet->src_addr_mode == IEEE802154_FCF_ADDR_SHORT) || (packet->src_addr_mode == IEEE802154_FCF_ADDR_EXT)) &&
+             ((packet->dst_addr_mode == IEEE802154_FCF_ADDR_NONE) || (!packet->intra_pan)) ) {
+            /* Source PAN is present, extract it and add it to the tree. */
+            packet->src_pan = tvb_get_letohs(tvb, offset);
+            if (tree) {
+                proto_tree_add_uint(ieee802154_tree, hf_ieee802154_src_panID, tvb, offset, 2, packet->src_pan);
+            }
+            offset += 2;
         }
-        offset += 2;
-    }
-    /* Set the panID field in case the intra-pan condition was met. */
-    else if (packet->dst_addr_mode != IEEE802154_FCF_ADDR_NONE) {
-        packet->src_pan = packet->dst_pan;
-    }
-    /* If all else fails, consider it a broadcast PANID. */
-    else {
-        packet->src_pan = IEEE802154_BCAST_PAN;
+        /* Set the panID field in case the intra-pan condition was met. */
+        else if (packet->dst_addr_mode != IEEE802154_FCF_ADDR_NONE) {
+            packet->src_pan = packet->dst_pan;
+        }
+        /* If all else fails, consider it a broadcast PANID. */
+        else {
+            packet->src_pan = IEEE802154_BCAST_PAN;
+        }
+    } else if (packet->version == IEEE802154_VERSION_2015) {
+        if ( (packet->dst_addr_mode < IEEE802154_FCF_ADDR_SHORT) && (packet->src_addr_mode >= IEEE802154_FCF_ADDR_SHORT) && (!packet->intra_pan) ) {
+            /* Source PAN is present, extract it and add it to the tree. */
+            packet->src_pan = tvb_get_letohs(tvb, offset);
+            if (tree) {
+                proto_tree_add_uint(ieee802154_tree, hf_ieee802154_src_panID, tvb, offset, 2, packet->src_pan);
+            }
+            offset += 2;
+        }
     }
 
+    // TODO: What should happen if no src_pan was included in the frame?
     if (ieee_hints) {
         ieee_hints->src_pan = packet->src_pan;
     }
