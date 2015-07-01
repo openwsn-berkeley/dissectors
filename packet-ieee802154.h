@@ -37,6 +37,7 @@
 /*  Packet Overhead from MAC header + footer (excluding addressing) */
 #define IEEE802154_MAX_FRAME_LEN            127
 #define IEEE802154_FCS_LEN                  2
+#define IEEE802154_FCF_LEN                  2 
 
 /*  Command Frame Identifier Types Definions */
 #define IEEE802154_CMD_ASRQ                 0x01

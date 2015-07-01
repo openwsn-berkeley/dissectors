@@ -186,6 +186,8 @@ static void dissect_ieee802154_gtsreq       (tvbuff_t *, packet_info *, proto_tr
 static void dissect_ieee802154_h_inf_elem     (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *); 
 static void dissect_ieee802154_p_inf_elem     (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *); 
 static void dissect_ieee802154_p_inf_elem_mlme (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *);
+/* Get the size of the MAC HEADER */
+int size_header (ieee802154_packet *packet);
 
 /* Decryption helpers. */
 typedef enum {
@@ -549,13 +551,100 @@ static int ieee802_15_4_short_address_len(void)
  *      void
  *---------------------------------------------------------------
  */
+int size_header (ieee802154_packet *packet) {
+
+    guint8 mac_header_size = 0;
+
+    /*FCF size*/ 
+    switch (packet->frame_type){
+
+    case IEEE802154_FCF_MULTIPURPOSE:
+        
+        break;
+    case IEEE802154_FCF_FRAGMENT_FRAG:
+        break;
+    case IEEE802154_FCF_EXTENDED:
+        
+        break;
+    default:
+        mac_header_size += 2;
+        break;
+    }
+    /* Destination Addressing Mode field */
+
+    switch (packet->dst_addr_mode) {
+    /* Short address*/
+    case IEEE802154_FCF_ADDR_SHORT:
+        mac_header_size += 4;
+        /* Destination PAN exists */
+        mac_header_size += 2;
+        break;
+    /* Long address*/
+    case IEEE802154_FCF_ADDR_EXT:
+        mac_header_size += 8;
+        /* Destination PAN exists */
+        mac_header_size += 2;
+        break;
+    default:
+     
+        break;
+
+    }
+    /* Source Addressing Mode field */
+    switch (packet->src_addr_mode) {
+
+    case IEEE802154_FCF_ADDR_SHORT:
+        mac_header_size += 2;
+        /* Destination PAN exists */
+        if (!packet->intra_pan){
+            mac_header_size += 2;
+        }
+        break;
+    case IEEE802154_FCF_ADDR_EXT:
+        mac_header_size += 8;
+        /* Destination PAN exists */
+        if (!packet->intra_pan){
+            mac_header_size += 2;
+        }
+        break;
+    default:
+     
+        break;
+
+    }
+
+    /* bit Sequence Number Suppression*/
+    if (!packet->seqnr_suppresion){
+        mac_header_size += 1;
+    }
+    return mac_header_size;
+}
+
+
+/*FUNCTION:------------------------------------------------------
+ *  NAME
+ *      dissect_ieee802154_h_inf_elem
+ *  DESCRIPTION
+ *      Dissector helper, parses and displays the information element(s).
+ *
+ *  PARAMETERS
+ *      ieee802154_packet   *packet - Packet info structure.
+ *      tvbuff_t    *tvb    - pointer to buffer containing raw packet.
+ *      packet_info *pinfo  - pointer to packet information fields
+ *      proto_tree  *tree   - pointer to data tree wireshark uses to display packet.
+ *      ieee802154_packet *packet   - IEEE 802.15.4 packet information.
+ *      guint       offset  - offset into the tvb to find the FCF.
+ *  RETURNS
+ *      void
+ *---------------------------------------------------------------
+ */
 static void
 dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee802154_packet *packet, guint *offset) 
 {
     /* IEEE802154_FCS_LEN */
     gboolean condition;
     condition = TRUE;
-    
+    packet->keep_dissecting = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header (packet);
 
     /* fcs = tvb_get_letohs(tvb, tvb_reported_length(tvb)-IEEE802154_FCS_LEN);*/
 
@@ -572,6 +661,7 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         packet->h_ie_id             = (header_ie & IEEE802154_H_IE_ID)  >> 7;
         packet->h_ie_type           = (header_ie & IEEE802154_H_IE_TYPE) >> 15;
         
+        packet->keep_dissecting -= (packet->h_ie_content_lenght + 2);
 
         /* Display the frame type. */
         proto_item_append_text(tree, " %s", val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "1"));
@@ -593,26 +683,27 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             proto_tree_add_boolean(field_tree, hf_ieee802154_h_ie_type, tvb, (*offset)+1, 1, header_ie & IEEE802154_H_IE_TYPE);
         }
         /*pos = ieee802154_h_information_elements[packet->h_ie_id];*/
+        *offset += (2 + packet->h_ie_content_lenght);
         
         switch(packet->h_ie_id) {
 
         case IEEE802154_H_IE_HDR_TERM_1:
             packet->p_ie_present = TRUE;
             condition = FALSE;
-            *offset += (2 + packet->h_ie_content_lenght);
+            
             break;
 
         case IEEE802154_H_IE_HDR_TERM_2:
             condition = FALSE;
-            *offset += (2 + packet->h_ie_content_lenght);
+            
             break;
 
         default:
-            if ( strcmp (val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown"),"Unknown") != 0 ) {
-                *offset += (2 + packet->h_ie_content_lenght);   
-             }
+            if (packet->keep_dissecting > 0) {
+                
+            }
             else {
-                condition = FALSE;
+                condition = FALSE;    
             }
             break;
 
