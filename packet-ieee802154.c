@@ -796,14 +796,19 @@ dissect_ieee802154_fcf(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee
 static void
 dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee802154_packet *packet, guint *offset) 
 {
-    /* IEEE802154_FCS_LEN */
     gboolean condition;
+    proto_tree *p_inf_elem_tree = NULL;
+    /* Create the protocol tree. */
+    if (tree) {
+        //proto_root = proto_tree_add_protocol_format(tree, proto_ieee802154_nonask_phy, tvb, 0, tvb_captured_length(tvb), "IEEE 802.15.4 non-ASK PHY");
+        p_inf_elem_tree = proto_item_add_subtree(tree, ett_ieee802154_p_ie);
+    }
     condition = TRUE;
     packet->keep_dissecting_p_ie = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header(packet) - packet->h_ie_size;
 
     while (condition) {    
         guint16     payload_ie;
-        proto_tree *field_tree;
+        //proto_tree *field_tree;
         
         /* Get the information within the Information's Element header */ 
         payload_ie = tvb_get_letohs(tvb, *offset);
@@ -816,23 +821,23 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         packet->keep_dissecting_p_ie -= (packet->p_ie_content_lenght + 2);
 
         /* Display the frame type. */
-        proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "3"/*"Reserved"*/));
-        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->frame_type, ieee802154_frame_types, "4"/*"Reserved")*/));
+        /*proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "3"));
+        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->frame_type, ieee802154_frame_types, "4"));*/
 
-        proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "5"/*"Reserved"*/));
-        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "6"/*"Reserved"*/));
+       /* proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "5"));
+        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "6")); */
 
         /* Add the Payload Information Element's header to the protocol tree. */
         if (tree) {
             /*  Create the FCF subtree. */
-            field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_p_ie, NULL,
+            p_inf_elem_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_p_ie, NULL,
                     "Payload Information Elements: %s (0x%04x)",
                     val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"), payload_ie);
 
             /* Payload Information Elements header's values */
-            proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_content_lenght, tvb, (*offset), 1, payload_ie & IEEE802154_P_IE_LENGTH);
-            proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_id, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_ID);
-            proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_type, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_TYPE);
+            proto_tree_add_uint(p_inf_elem_tree, hf_ieee802154_p_ie_content_lenght, tvb, (*offset), 1, payload_ie & IEEE802154_P_IE_LENGTH);
+            proto_tree_add_uint(p_inf_elem_tree, hf_ieee802154_p_ie_id, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_ID);
+            proto_tree_add_boolean(p_inf_elem_tree, hf_ieee802154_p_ie_type, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_TYPE);
                    
         }
      
@@ -845,7 +850,7 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
 
             case IEEE802154_P_IE_MLME:
                 *offset += 2;
-                dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, tree, packet, offset);
+                dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, p_inf_elem_tree, packet, offset);
                                            
                 break;
             default : 
@@ -896,8 +901,8 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
             if (packet->keep_dissecting >= packet->p_ie_content_lenght) {
                 conditionn = FALSE;
             }
-            proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "5"));
-            col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "6"));
+            proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"));
+            col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"));
 
             if (tree) { 
             /*  Create the FCF subtree. */
@@ -924,8 +929,8 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 conditionn = FALSE;
             }
 
-            proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "5"/*"Reserved"*/));
-            col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "6"/*"Reserved"*/));
+            proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "Unknown"));
+            col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "Unknown"));
 
             if (tree) {
             /*  Create the FCF subtree. */
@@ -1188,8 +1193,12 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     /*=====================================================
      * ADDRESSING FIELDS
      *=====================================================
+     * 
+     * IT DOES NOT FOLLOW THE Std 802.15.4e-2012 release, page 61 Table 2a.. 
+     * Once the IEEE-802.15.4-2015 release comes public, the changes will be implemented.  
+     *  
      */
-    /* Clear out the addressing strings. */
+     /* Clear out the addressing strings. */
     SET_ADDRESS(&pinfo->net_dst, AT_NONE, 0, NULL);
     COPY_ADDRESS_SHALLOW(&pinfo->dl_dst, &pinfo->net_dst);
     COPY_ADDRESS_SHALLOW(&pinfo->dst, &pinfo->net_dst);
@@ -1494,13 +1503,8 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             /* Information Elements analysis to be added */
             dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
             if (packet->p_ie_present) {
-                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
-                /*if (packet->p_ie_mlme_present) {
-                    dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
-                }*/
-               /* goto dissect_ieee802154_fcs; */                            
-            }
-          /*  else goto dissect_ieee802154_fcs; */
+                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);                          
+            }         
         }  
     }
     /* Only the Command ID is considered nonpayload. */ /* The Information Elements as well */
@@ -1509,13 +1513,8 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             /* Information Elements analysis to be added */
             dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
             if (packet->p_ie_present) {
-                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset); 
-                /*if (packet->p_ie_mlme_present) {
-                    dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
-                }*/
-             /*   goto dissect_ieee802154_fcs;      */                      
+                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);                 
             }
-        /*    else goto dissect_ieee802154_fcs; */
         }
 
         packet->command_id = tvb_get_guint8(tvb, offset);
@@ -1533,13 +1532,8 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
         /* Information Elements analysis to be added */
         dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
         if (packet->p_ie_present) {
-                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
-                /*if (packet->p_ie_mlme_present) {
-                    dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
-                }*/
-            /*  goto dissect_ieee802154_fcs; */                            
-            }
-     /* else goto dissect_ieee802154_fcs; */       
+                dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);                          
+        }    
     } 
 
     /*=====================================================
