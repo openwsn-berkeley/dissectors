@@ -656,6 +656,9 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
     while (condition) {    
         guint16     header_ie;
         proto_tree *field_tree;
+        gint  reported_len;
+        gint  captured_len;
+        tvbuff_t  *volatile payload_tvb;
         /*value_string pos;*/
 
         /* Get the information within the Information's Element header */ 
@@ -689,7 +692,14 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             proto_tree_add_boolean(field_tree, hf_ieee802154_h_ie_type, tvb, (*offset)+1, 1, header_ie & IEEE802154_H_IE_TYPE);
         }
         /*pos = ieee802154_h_information_elements[packet->h_ie_id];*/
-        *offset += (2 + packet->h_ie_content_lenght);
+        //*offset += (2 + packet->h_ie_content_lenght);
+        *offset += 2 ;
+        reported_len = packet->h_ie_content_lenght;
+        captured_len = reported_len;
+        payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
+        call_dissector(data_handle, payload_tvb, pinfo, tree);
+        *offset += packet->h_ie_content_lenght;
+
         
         switch(packet->h_ie_id) {
 
@@ -886,6 +896,9 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
     packet->keep_dissecting = 0;
     while (conditionn){
         guint16     mlme_header;
+        gint  reported_len;
+        gint  captured_len;
+        tvbuff_t  *volatile payload_tvb;
         proto_tree *field_tree;
         mlme_header = tvb_get_letohs(tvb, *offset);
         packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15; 
@@ -914,7 +927,20 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_lg_id, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_MLME_LONG_ID);
                 proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
 
-                *offset += 2 + packet->p_ie_mlme_lg_lenght;
+                *offset += 2 ;
+                reported_len = packet->p_ie_mlme_lg_lenght;
+                captured_len = reported_len;
+                payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
+                call_dissector(data_handle, payload_tvb, pinfo, tree);
+                 *offset += packet->p_ie_mlme_lg_lenght;
+
+                //call_dissector(data_handle, tvb, pinfo, field_tree);
+
+               // *offset += 2 + packet->p_ie_mlme_lg_lenght;
+            //gint            reported_len = tvb_reported_length(tvb)-offset-IEEE802154_FCS_LEN;
+            //gint            captured_len = tvb_captured_length(tvb)-offset;
+            //if (reported_len < captured_len) captured_len = reported_len;
+            //payload_tvb = tvb_new_subset(tvb, offset, captured_len, reported_len);
                 //call_dissector(data_handle, tvb, pinfo, field_tree);
             }
         }
@@ -943,7 +969,14 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_sh_id, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_MLME_SHORT_ID);
                 proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
                 //call_dissector(data_handle, tvb, pinfo, field_tree);
-                *offset += 2 + packet->p_ie_mlme_sh_lenght;
+                //*offset += 2 + packet->p_ie_mlme_sh_lenght;
+                 *offset += 2 ;
+                reported_len = packet->p_ie_mlme_sh_lenght;
+                captured_len = reported_len;
+                payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
+                call_dissector(data_handle, payload_tvb, pinfo, tree);
+                 *offset += packet->p_ie_mlme_sh_lenght;
+
             }
         }                
     }
@@ -3002,7 +3035,7 @@ void proto_register_ieee802154(void)
             IEEE802154_H_IE_ID, NULL, HFILL }},   
 
         { &hf_ieee802154_h_ie_type,
-        { "Information Element type",                  "wpan.h_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
+        { "Payload IE: TRUE - Header IE: FALSE",                  "wpan.h_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
             "Type 0 Header, Type 1 Payload.", HFILL }}, 
 /* ---------------------------------Information Elements added by jmms --------------------------------------------*/
 
@@ -3016,7 +3049,7 @@ void proto_register_ieee802154(void)
             IEEE802154_P_IE_ID, NULL, HFILL }},   
 
         { &hf_ieee802154_p_ie_type,
-        { "Information Element type",                  "wpan.p_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_IE_TYPE,
+        { "Payload IE: TRUE - Header IE: FALSE",                  "wpan.p_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_IE_TYPE,
             "Type 0 Header, Type 1 Payload.", HFILL }}, 
 /* ---------------------------------Information Elements added by jmms --------------------------------------------*/
 
@@ -3030,7 +3063,7 @@ void proto_register_ieee802154(void)
             IEEE802154_P_MLME_SHORT_ID, NULL, HFILL }},   
 
         { &hf_ieee802154_p_ie_mlme_type,
-        { "MLME Short Information Element type",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_MLME_TYPE,
+        { "MLME Short Information Element type. Short: FALSE - Long: TRUE",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_MLME_TYPE,
             "Type 0 Short, Type 1 Long.", HFILL }}, 
 /* ---------------------------------Information Elements added by jmms --------------------------------------------*/   
 
