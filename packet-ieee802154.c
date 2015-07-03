@@ -333,11 +333,6 @@ static int hf_ieee802154_p_ie_mlme_type = -1;
 static int hf_ieee802154_p_ie_mlme_lg_lenght = -1;
 static int hf_ieee802154_p_ie_mlme_lg_id  = -1;
 
-/*guint32 mlme_memory_counter = 0;
-guint32 mlme_type = 0;*/
-   
-
-
 /*
  * Dissector handles
  *  - beacon dissection is always heuristic.
@@ -596,16 +591,24 @@ int size_header (ieee802154_packet *packet) {
     case IEEE802154_FCF_ADDR_SHORT:
         mac_header_size += 2;
         /* Destination PAN exists */
-        if (!packet->intra_pan){
-            mac_header_size += 2;
-        }
+        /* In order to match the technical discussions at the 6TiSCH plugtest telco on 2 July 2015:
+            THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT WITH THE BIT --PAN ID compression-- (packet->intra_pan)
+            that's why the following 3 lines are commented
+        */
+        //if (!packet->intra_pan){
+        //    mac_header_size += 2;
+        //}
         break;
     case IEEE802154_FCF_ADDR_EXT:
         mac_header_size += 8;
         /* Destination PAN exists */
-        if (!packet->intra_pan){
-            mac_header_size += 2;
-        }
+        /* In order to match the technical discussions at the 6TiSCH plugtest telco on 2 July 2015:
+            THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT WITH THE BIT --PAN ID compression-- (packet->intra_pan)
+            that's why the following 3 lines are commented
+        */
+        //if (!packet->intra_pan){
+        //    mac_header_size += 2;
+        //}
         break;
     default:
      
@@ -708,10 +711,7 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             }
             break;
 
-        }
- 
-
-    
+        }    
     }
 }
 
@@ -884,7 +884,6 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
     gboolean conditionn;
     conditionn = TRUE;
     packet->keep_dissecting = 0;
-
     while (conditionn){
         guint16     mlme_header;
         proto_tree *field_tree;
@@ -916,6 +915,7 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
 
                 *offset += 2 + packet->p_ie_mlme_lg_lenght;
+                //call_dissector(data_handle, tvb, pinfo, field_tree);
             }
         }
 
@@ -942,7 +942,7 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_sh_lenght, tvb, (*offset), 1, mlme_header & IEEE802154_P_MLME_SHORT_LENGTH);
                 proto_tree_add_uint(field_tree, hf_ieee802154_p_ie_mlme_sh_id, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_MLME_SHORT_ID);
                 proto_tree_add_boolean(field_tree, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
-
+                //call_dissector(data_handle, tvb, pinfo, field_tree);
                 *offset += 2 + packet->p_ie_mlme_sh_lenght;
             }
         }                
@@ -1207,6 +1207,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     COPY_ADDRESS_SHALLOW(&pinfo->src, &pinfo->net_src);
 
     /* Get and display the destination PAN, if present. */
+
     if ( (packet->dst_addr_mode == IEEE802154_FCF_ADDR_SHORT) ||
          (packet->dst_addr_mode == IEEE802154_FCF_ADDR_EXT) ) {
         packet->dst_pan = tvb_get_letohs(tvb, offset);
@@ -1278,15 +1279,22 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     /* Get the source PAN if it exists. The source address will be present if:
      *  - The Source addressing exists and
      *  - The Destination addressing doesn't exist, or the Intra-PAN bit is unset.
+     * In order to match the technical discussions at the 6TiSCH plugtest telco on 2 July 2015:
+     *      THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT WITH THE BIT --PAN ID compression-- (packet->intra_pan)
+     *       that's why the following 5 lines are commented
+        
      */
     if ( ((packet->src_addr_mode == IEEE802154_FCF_ADDR_SHORT) || (packet->src_addr_mode == IEEE802154_FCF_ADDR_EXT)) &&
          ((packet->dst_addr_mode == IEEE802154_FCF_ADDR_NONE) || (!packet->intra_pan)) ) {
         /* Source PAN is present, extract it and add it to the tree. */
-        packet->src_pan = tvb_get_letohs(tvb, offset);
-        if (tree) {
-            proto_tree_add_uint(ieee802154_tree, hf_ieee802154_src_panID, tvb, offset, 2, packet->src_pan);
-        }
-        offset += 2;
+        /* In order to match the technical discussions at the 6TiSCH plugtest telco on 2 July 2015:
+           THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT WITH THE BIT --PAN ID compression-- (packet->intra_pan)
+            that's why the following 5 lines are commented*/
+        //packet->src_pan = tvb_get_letohs(tvb, offset);
+        //if (tree) {
+        //    proto_tree_add_uint(ieee802154_tree, hf_ieee802154_src_panID, tvb, offset, 2, packet->src_pan);
+        //}
+        //offset += 2;
     }
     /* Set the panID field in case the intra-pan condition was met. */
     else if (packet->dst_addr_mode != IEEE802154_FCF_ADDR_NONE) {
