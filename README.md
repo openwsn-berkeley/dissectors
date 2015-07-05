@@ -38,7 +38,7 @@ set CYGWIN=C:\cygwin64
 set WIRESHARK_BASE_DIR=C:\wireshark\wireshark-1.99.7
 set WIRESHARK_TARGET_PLATFORM=win64
 set QT5_BASE_DIR=C:\Qt\Qt5.4.2\5.4\msvc2013_64_opengl
-set WIRESHARK_VERSION_EXTRA=-6tisch_0.2
+set WIRESHARK_VERSION_EXTRA=-6tisch_0.3
 set PATH=C:\cygwin64\bin;%PATH%
 cd C:\wireshark\wireshark-1.99.7
 
