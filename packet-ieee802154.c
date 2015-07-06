@@ -673,19 +673,18 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         packet->h_ie_size += (packet->h_ie_content_lenght + 2);
         //packet->keep_dissecting_p_ie -= (packet->h_ie_content_lenght + 2);
         /* Display the frame type. */
-        proto_item_append_text(tree, " %s", val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "1"));
-        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "2"));
-        proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "3"/*"Reserved"*/));
-        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->frame_type, ieee802154_frame_types, "4"/*"Reserved")*/));
+        proto_item_append_text(tree, " %s", val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown"));
+        /*col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "2"));*/
+        /*proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "3"));
+        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->frame_type, ieee802154_frame_types, "4"));*/
 
-        
-        /* Add the Header Information Element's header to the protocol tree. */
-        if (tree) {
-            /*  Create the FCF subtree. */
-            field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_h_ie, NULL,
+        field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_h_ie, NULL,
                     "Header Information Elements: %s (0x%04x)",
                     val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown"), header_ie);
-
+        /* Add the Header Information Element's header to the protocol tree. */
+        if (tree) {
+            /*  Create the Header IE subtree. */
+            
             /* Header Information Elements header's values */
             proto_tree_add_uint(field_tree, hf_ieee802154_h_ie_content_lenght, tvb, (*offset), 1, header_ie & IEEE802154_H_IE_LENGTH);
             proto_tree_add_uint(field_tree, hf_ieee802154_h_ie_id, tvb, (*offset), 1, header_ie & IEEE802154_H_IE_ID);
@@ -697,7 +696,7 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         reported_len = packet->h_ie_content_lenght;
         captured_len = reported_len;
         payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
-        call_dissector(data_handle, payload_tvb, pinfo, tree);
+        call_dissector(data_handle, payload_tvb, pinfo, field_tree);
         *offset += packet->h_ie_content_lenght;
 
         
@@ -777,8 +776,8 @@ dissect_ieee802154_fcf(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee
     packet->src_addr_mode    = (fcf & IEEE802154_FCF_SADDR_MASK) >> 14;
 
     /* Display the frame type. */
-    proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "3"/*"Reserved"*/));
-    col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->frame_type, ieee802154_frame_types, "4"/*"Reserved")*/));
+    proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "Unknown"));
+    col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->frame_type, ieee802154_frame_types, "Unknown"));
 
     proto_tree_add_bitmask(tree, tvb, *offset, hf_ieee802154_fcf,
                            ett_ieee802154_fcf, fields, ENC_LITTLE_ENDIAN);
@@ -831,11 +830,8 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         packet->keep_dissecting_p_ie -= (packet->p_ie_content_lenght + 2);
 
         /* Display the frame type. */
-        /*proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "3"));
-        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->frame_type, ieee802154_frame_types, "4"));*/
-
-       /* proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "5"));
-        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "6")); */
+        proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "5"));
+        /* col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "6")); */
 
         /* Add the Payload Information Element's header to the protocol tree. */
         if (tree) {
@@ -914,9 +910,10 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 conditionn = FALSE;
             }
             proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"));
-            col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"));
+            /*col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"));*/
 
             if (tree) { 
+            	//proto_tree *field_tree_data_mlme;
             /*  Create the FCF subtree. */
                 field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_mlme_lg_p_ie, NULL,
                 "Long MLME Information Elements: %s (0x%04x)",
@@ -930,9 +927,12 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 *offset += 2 ;
                 reported_len = packet->p_ie_mlme_lg_lenght;
                 captured_len = reported_len;
-                payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
-                call_dissector(data_handle, payload_tvb, pinfo, tree);
-                 *offset += packet->p_ie_mlme_lg_lenght;
+               	payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
+                	//field_tree_data_mlme = proto_tree_add_subtree_format(tree, tvb, *offset, tvb_reported_length(payload_tvb), ett_ieee802154_mlme_payload, NULL, 
+                	//"Payload MLME IE: (0x%04s)", "Data", NULL);
+                call_dissector(data_handle, payload_tvb, pinfo, field_tree);
+                *offset += packet->p_ie_mlme_lg_lenght;
+                 
 
                 //call_dissector(data_handle, tvb, pinfo, field_tree);
 
@@ -954,12 +954,12 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
             if (packet->keep_dissecting >= packet->p_ie_content_lenght) {
                 conditionn = FALSE;
             }
-
             proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "Unknown"));
-            col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "Unknown"));
+            /*col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "Unknown"));*/
 
             if (tree) {
-            /*  Create the FCF subtree. */
+            	//proto_tree *field_tree_data_mlme;
+            	/*  Create the FCF subtree. */
                 field_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_mlme_sh_p_ie, NULL,
                 "Short MLME Information Elements: %s (0x%04x)",
                 val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "Unknown"), mlme_header);
@@ -974,9 +974,10 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 reported_len = packet->p_ie_mlme_sh_lenght;
                 captured_len = reported_len;
                 payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
-                call_dissector(data_handle, payload_tvb, pinfo, tree);
+                	//field_tree_data_mlme = proto_tree_add_subtree_format(tree, tvb, *offset, tvb_reported_length(payload_tvb), ett_ieee802154_mlme_payload, NULL, 
+                	//"Payload MLME IE: (0x%04s)", "Data", NULL);
+                call_dissector(data_handle, payload_tvb, pinfo, field_tree);
                  *offset += packet->p_ie_mlme_sh_lenght;
-
             }
         }                
     }
@@ -3035,7 +3036,7 @@ void proto_register_ieee802154(void)
             IEEE802154_H_IE_ID, NULL, HFILL }},   
 
         { &hf_ieee802154_h_ie_type,
-        { "Payload IE: TRUE - Header IE: FALSE",                  "wpan.h_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
+        { "Header IE. This bit must be unset",                  "wpan.h_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
             "Type 0 Header, Type 1 Payload.", HFILL }}, 
 /* ---------------------------------Information Elements added by jmms --------------------------------------------*/
 
@@ -3049,7 +3050,7 @@ void proto_register_ieee802154(void)
             IEEE802154_P_IE_ID, NULL, HFILL }},   
 
         { &hf_ieee802154_p_ie_type,
-        { "Payload IE: TRUE - Header IE: FALSE",                  "wpan.p_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_IE_TYPE,
+        { "Payload IE. This bit must be set to 1",                  "wpan.p_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_IE_TYPE,
             "Type 0 Header, Type 1 Payload.", HFILL }}, 
 /* ---------------------------------Information Elements added by jmms --------------------------------------------*/
 
@@ -3063,7 +3064,7 @@ void proto_register_ieee802154(void)
             IEEE802154_P_MLME_SHORT_ID, NULL, HFILL }},   
 
         { &hf_ieee802154_p_ie_mlme_type,
-        { "MLME Short Information Element type. Short: FALSE - Long: TRUE",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_MLME_TYPE,
+        { "MLME Information Element type (Short = FALSE - Long = TRUE) ",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_MLME_TYPE,
             "Type 0 Short, Type 1 Long.", HFILL }}, 
 /* ---------------------------------Information Elements added by jmms --------------------------------------------*/   
 
