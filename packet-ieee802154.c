@@ -1133,7 +1133,7 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
     guint16     slotframe_size;
     guint8      nb_links;
     guint8      nb_links_aux;
-    guint32     link_inf;
+    guint64     link_inf;
     guint64     header_slotf_link;
     guint16     timeslot;
     guint16     channel_Offset;
@@ -1165,15 +1165,16 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
         nb_slotframes_aux -= 1;
         *offset += 5;
         while (nb_links_aux > 0) {
-            link_inf        = tvb_get_letohl(tvb, *offset);
-            link_inf        = link_inf & 0x000000FFFFFFFFFF;
+            link_inf        = tvb_get_letoh64(tvb, *offset-3);
+            link_inf        = link_inf & 0xFFFFFFFFFF000000;
+            link_inf        = link_inf >> 24;
             timeslot        = tvb_get_letohs(tvb, *offset);
             channel_Offset  = tvb_get_letohs(tvb, *offset+2);
             link_options    = tvb_get_guint8(tvb, *offset+4);
 
-            p_inf_elem_tree_mlme_payload_data = proto_tree_add_subtree_format(p_inf_elem_tree_mlme_payload, tvb, *offset, 4, ett_ieee802154_mlme_payload_data, NULL,
-                    "Data: %s (0x%x)",
-                    "Link Information", link_inf);
+            p_inf_elem_tree_mlme_payload_data = proto_tree_add_subtree_format(p_inf_elem_tree_mlme_payload, tvb, *offset, 5, ett_ieee802154_mlme_payload_data, NULL,
+                    "Data: %s (0x%llx)",
+                    "Link Information", (unsigned long long)link_inf);
 
             if (p_inf_elem_tree_mlme_payload_data){
 
