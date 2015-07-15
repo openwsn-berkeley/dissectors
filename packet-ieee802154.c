@@ -187,6 +187,7 @@ static void dissect_ieee802154_h_inf_elem     (tvbuff_t *, packet_info *, proto_
 static void dissect_ieee802154_p_inf_elem     (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *); 
 static void dissect_ieee802154_p_inf_elem_mlme (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *);
 //static void dissect_ieee802154_p_inf_elem_mlme_content (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *);
+static void dissect_802154_h_ie_time_correction (tvbuff_t *, proto_tree *, ieee802154_packet *, guint *);
 static void dissect_802154_p_ie_sh_mlme_tsch_sync (tvbuff_t *, proto_tree *, ieee802154_packet *, guint *);
 static void dissect_802154_p_ie_sh_mlme_tsch_slotframe_link (tvbuff_t *, proto_tree *, guint *);
 //static void dissect_802154_p_ie_sh_mlme_slotfr_link (tvbuff_t *, proto_tree *, ieee802154_packet *, guint *);
@@ -313,6 +314,7 @@ static gint ett_ieee802154_mlme_sh_p_ie = -1;
 static gint ett_ieee802154_mlme_lg_p_ie = -1;
 static gint ett_ieee802154_mlme_payload = -1;
 static gint ett_ieee802154_mlme_payload_data = -1;
+static gint ett_ieee802154_h_ie_payload = -1;
 
 static expert_field ei_ieee802154_invalid_addressing = EI_INIT;
 static expert_field ei_ieee802154_fcs = EI_INIT;
@@ -338,6 +340,9 @@ static int hf_ieee802154_p_ie_mlme_sh_id  = -1;
 static int hf_ieee802154_p_ie_mlme_type = -1;
 static int hf_ieee802154_p_ie_mlme_lg_lenght = -1;
 static int hf_ieee802154_p_ie_mlme_lg_id  = -1;
+
+/* Header Information Elements payload */
+static int hf_ieee802154_h_ie_time_correction = -1;
 
 /* Payload MLME Information Elements */
 static int hf_ieee802154_p_ie_mlme_sh_tsch_asn = -1;
@@ -435,6 +440,28 @@ static const value_string ieee802154_h_information_elements[] = {
     { IEEE802154_H_IE_GLOBAL_TIME, "Global Time IE" },
     { IEEE802154_H_IE_HDR_TERM_1, "Header Termination 1 IE" },
     { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" },
+    { 0, NULL }
+};
+
+static const value_string ieee802154_h_information_elements_defined[] = {
+ //   { IEEE802154_H_IE_DA_IE_VENDOR_SPECIFIC_HEADER, "DA IE Vendor Specific Header IE" },
+ //   { IEEE802154_H_IE_DA, "DA IE" },
+ //   { IEEE802154_H_IE_CSL, "CSL IE" },
+ //   { IEEE802154_H_IE_RIT, "RIT IE" },
+ //   { IEEE802154_H_IE_DSME_PAN_DESC, "DSME PAN descriptor IE" },
+ //   { IEEE802154_H_IE_RDV_TIME, "Rendezvous Time IE" },
+    { IEEE802154_H_IE_TIME_CORRECTION, "Time Correction IE" },
+ //   { IEEE802154_H_IE_EXT_DSME_PAN_DESC, "Extended DSME PAN descriptor IE" },
+ //   { IEEE802154_H_IE_FSCD, "Fragment Sequence Context Description (FSCD) IE" },
+ //   { IEEE802154_H_IE_SIMPL_SF_SPEC, "Simplified Superframe Specification IE" },
+ //   { IEEE802154_H_IE_SIMPL_GTS, "Simplified GTS Specification IE" },
+ //   { IEEE802154_H_IE_LECIM_CAPAB, "LECIM Capabilities IE" },
+ //   { IEEE802154_H_IE_TRLE_DESC, "TRLE Descriptor" },
+ //   { IEEE802154_H_IE_RCC_CAPAB, "RCC Capabilities IE" },
+ //   { IEEE802154_H_IE_RCCN_DESC, "RCCN Descriptor IE"},
+ //   { IEEE802154_H_IE_GLOBAL_TIME, "Global Time IE" },
+ //   { IEEE802154_H_IE_HDR_TERM_1, "Header Termination 1 IE" },
+ //   { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" },
     { 0, NULL }
 };
 
@@ -587,19 +614,15 @@ static int ieee802_15_4_short_address_len(void)
 
 /*FUNCTION:------------------------------------------------------
  *  NAME
- *      dissect_ieee802154_h_inf_elem
+ *      size_header
  *  DESCRIPTION
- *      Dissector helper, parses and displays the information element(s).
+ *      It provides the size of the IEEE802154 header. 
  *
  *  PARAMETERS
- *      ieee802154_packet   *packet - Packet info structure.
- *      tvbuff_t    *tvb    - pointer to buffer containing raw packet.
- *      packet_info *pinfo  - pointer to packet information fields
- *      proto_tree  *tree   - pointer to data tree wireshark uses to display packet.
  *      ieee802154_packet *packet   - IEEE 802.15.4 packet information.
- *      guint       offset  - offset into the tvb to find the FCF.
+ *      
  *  RETURNS
- *      void
+ *      int
  *---------------------------------------------------------------
  */
 int size_header (ieee802154_packet *packet) {
@@ -684,7 +707,7 @@ int size_header (ieee802154_packet *packet) {
  *  NAME
  *      dissect_ieee802154_h_inf_elem
  *  DESCRIPTION
- *      Dissector helper, parses and displays the information element(s).
+ *      Dissector helper, parses and displays the header information element(s).
  *
  *  PARAMETERS
  *      ieee802154_packet   *packet - Packet info structure.
@@ -704,12 +727,8 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
     gboolean condition;
     proto_tree *h_inf_elem_tree = NULL;
     condition = TRUE;
-    packet->keep_dissecting = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header (packet);
+    packet->keep_dissecting = tvb_captured_length(tvb) - IEEE802154_FCS_LEN - size_header (packet);
     packet->h_ie_size = 0;
-    
-    //packet->keep_dissecting_p_ie = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header(packet);
-
-    /* fcs = tvb_get_letohs(tvb, tvb_reported_length(tvb)-IEEE802154_FCS_LEN);*/
 
     while (condition) {    
         guint16     header_ie;
@@ -729,13 +748,8 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         
         packet->keep_dissecting -= (packet->h_ie_content_lenght + 2);
         packet->h_ie_size += (packet->h_ie_content_lenght + 2);
-        //packet->keep_dissecting_p_ie -= (packet->h_ie_content_lenght + 2);
         /* Display the frame type. */
         proto_item_append_text(tree, " %s", val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown"));
-        /*col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "2"));*/
-        /*proto_item_append_text(tree, " %s", val_to_str_const(packet->frame_type, ieee802154_frame_types, "3"));
-        col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->frame_type, ieee802154_frame_types, "4"));*/
-
         
         /* Add the Header Information Element's header to the protocol tree. */
         if (tree) {
@@ -748,37 +762,43 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             proto_tree_add_uint(h_inf_elem_tree, hf_ieee802154_h_ie_id, tvb, (*offset), 1, header_ie & IEEE802154_H_IE_ID);
             proto_tree_add_boolean(h_inf_elem_tree, hf_ieee802154_h_ie_type, tvb, (*offset)+1, 1, header_ie & IEEE802154_H_IE_TYPE);
         }
-        /*pos = ieee802154_h_information_elements[packet->h_ie_id];*/
-        //*offset += (2 + packet->h_ie_content_lenght);
         *offset += 2 ;
         reported_len = packet->h_ie_content_lenght;
         captured_len = reported_len;
         payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
-        call_dissector(data_handle, payload_tvb, pinfo, h_inf_elem_tree);
-        *offset += packet->h_ie_content_lenght;
 
-        
         switch(packet->h_ie_id) {
 
         case IEEE802154_H_IE_HDR_TERM_1:
             packet->p_ie_present = TRUE;
             condition = FALSE;
-            
             break;
-
         case IEEE802154_H_IE_HDR_TERM_2:
-            condition = FALSE;
-            
+            condition = FALSE;            
             break;
-
         default:
-            if (!packet->keep_dissecting > 0) {
-                    
-                condition = FALSE;    
+            if (!packet->keep_dissecting > 0) {  
+                condition = FALSE;
+                if(strcmp(val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements_defined, "Unknown"), "Unknown") != 0) {
+                    switch (packet->h_ie_id){
+                        case IEEE802154_H_IE_TIME_CORRECTION:
+                            dissect_802154_h_ie_time_correction(tvb, h_inf_elem_tree, packet, offset);
+                            *offset += packet->h_ie_content_lenght;
+                            break;
+                            
+                        default:
+                            call_dissector(data_handle, payload_tvb, pinfo, h_inf_elem_tree);
+                            *offset += packet->h_ie_content_lenght;
+                            break;  
+                   }
+                }
+                else{
+                    call_dissector(data_handle, payload_tvb, pinfo, h_inf_elem_tree);
+                    *offset += packet->h_ie_content_lenght;    
+                }    
             }
             break;
-
-        }    
+        }
     }
 }
 
@@ -847,7 +867,7 @@ dissect_ieee802154_fcf(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee
  *  NAME
  *      dissect_ieee802154_p_inf_elem
  *  DESCRIPTION
- *      Dissector helper, parses and displays the information element(s).
+ *      Dissector helper, parses and displays the payload information element(s).
  *
  *  PARAMETERS
  *      ieee802154_packet   *packet - Packet info structure.
@@ -867,11 +887,10 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
     proto_tree *p_inf_elem_tree = NULL;
     /* Create the protocol tree. */
     if (tree) {
-        //proto_root = proto_tree_add_protocol_format(tree, proto_ieee802154_nonask_phy, tvb, 0, tvb_captured_length(tvb), "IEEE 802.15.4 non-ASK PHY");
         p_inf_elem_tree = proto_item_add_subtree(tree, ett_ieee802154_p_ie);
     }
     condition = TRUE;
-    packet->keep_dissecting_p_ie = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header(packet) - packet->h_ie_size;
+    packet->keep_dissecting_p_ie = tvb_captured_length(tvb) - IEEE802154_FCS_LEN - size_header(packet) - packet->h_ie_size;
 
     while (condition) {    
         guint16     payload_ie;
@@ -888,9 +907,7 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         packet->keep_dissecting_p_ie -= (packet->p_ie_content_lenght + 2);
 
         /* Display the frame type. */
-        proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "5"));
-        /* col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "6")); */
-
+        proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"));
         /* Add the Payload Information Element's header to the protocol tree. */
         if (tree) {
             /*  Create the FCF subtree. */
@@ -902,7 +919,7 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             proto_tree_add_uint(p_inf_elem_tree, hf_ieee802154_p_ie_content_lenght, tvb, (*offset), 1, payload_ie & IEEE802154_P_IE_LENGTH);
             proto_tree_add_uint(p_inf_elem_tree, hf_ieee802154_p_ie_id, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_ID);
             proto_tree_add_boolean(p_inf_elem_tree, hf_ieee802154_p_ie_type, tvb, (*offset)+1, 1, payload_ie & IEEE802154_P_IE_TYPE);
-                   
+
         }
      
         switch (packet->p_ie_id) {
@@ -929,15 +946,18 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
 }
 /*FUNCTION:------------------------------------------------------
  *  NAME
- *      dissect_ieee802154_nonask_phy
+ *      dissect_ieee802154_p_inf_elem_mlme
  *  DESCRIPTION
  *      Dissector for IEEE 802.15.4 non-ASK PHY packet with an FCS containing
  *      a 16-bit CRC value.
  *
  *  PARAMETERS
- *      tvbuff_t *tvb       - pointer to buffer containing raw packet.
+ *      ieee802154_packet   *packet - Packet info structure.
+ *      tvbuff_t    *tvb    - pointer to buffer containing raw packet.
  *      packet_info *pinfo  - pointer to packet information fields
- *      proto_tree *tree    - pointer to data tree wireshark uses to display packet.
+ *      proto_tree  *tree   - pointer to data tree wireshark uses to display packet.
+ *      ieee802154_packet *packet   - IEEE 802.15.4 packet information.
+ *      guint       offset  - offset into the tvb to find the FCF.
  *  RETURNS
  *      void
  *---------------------------------------------------------------
@@ -988,23 +1008,13 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 reported_len = packet->p_ie_mlme_lg_lenght;
                 captured_len = reported_len;
                	payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
-                	//field_tree_data_mlme = proto_tree_add_subtree_format(tree, tvb, *offset, tvb_reported_length(payload_tvb), ett_ieee802154_mlme_payload, NULL, 
-                	//"Payload MLME IE: (0x%04s)", "Data", NULL);
-                if(strcmp(val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements_defined, "Unknown"), "Unknown") != 0) {
-                    //dissect_ieee802154_p_inf_elem_mlme_content(tvb, pinfo, p_inf_elem_tree_mlme, packet, offset);
-                    //call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_mlme);
-                    //*offset += packet->p_ie_mlme_lg_lenght;
-                    switch (packet->p_ie_mlme_lg_id){
 
+                if(strcmp(val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements_defined, "Unknown"), "Unknown") != 0) {
+
+                    switch (packet->p_ie_mlme_lg_id){
                         case IEEE802154_P_IE_CHANNEL_HOPPING_LG:
-                            //call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_mlme);
-                        //    *offset += packet->p_ie_mlme_lg_lenght;
                             dissect_802154_p_ie_lg_mlme_channel_hopping(tvb, pinfo, p_inf_elem_tree_mlme, packet, offset);
                             break;
-                        //default:
-                        //    call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_mlme);
-                        //    *offset += packet->p_ie_mlme_lg_lenght;
-                        //    break;
                     }
                 }
                 else {
@@ -1037,17 +1047,13 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 proto_tree_add_uint(p_inf_elem_tree_mlme, hf_ieee802154_p_ie_mlme_sh_lenght, tvb, (*offset), 1, mlme_header & IEEE802154_P_MLME_SHORT_LENGTH);
                 proto_tree_add_uint(p_inf_elem_tree_mlme, hf_ieee802154_p_ie_mlme_sh_id, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_MLME_SHORT_ID);
                 proto_tree_add_boolean(p_inf_elem_tree_mlme, hf_ieee802154_p_ie_mlme_type, tvb, (*offset)+1, 1, mlme_header & IEEE802154_P_IE_TYPE);
-                //call_dissector(data_handle, tvb, pinfo, field_tree);
-                //*offset += 2 + packet->p_ie_mlme_sh_lenght;
+
                  *offset += 2 ;
                 reported_len = packet->p_ie_mlme_sh_lenght;
                 captured_len = reported_len;
                 payload_tvb = tvb_new_subset(tvb, *offset, captured_len, reported_len);
-                	//field_tree_data_mlme = proto_tree_add_subtree_format(tree, tvb, *offset, tvb_reported_length(payload_tvb), ett_ieee802154_mlme_payload, NULL, 
+
                 if(strcmp(val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements_defined, "Unknown"), "Unknown") != 0) {
-                    //dissect_ieee802154_p_inf_elem_mlme_content(tvb, pinfo, p_inf_elem_tree_mlme, packet, offset); 
-                    //call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_mlme);
-                    //*offset += packet->p_ie_mlme_sh_lenght; 
                     switch (packet->p_ie_mlme_sh_id ){
 
                         case IEEE802154_P_IE_TSCH_SYNC_SH:
@@ -1073,7 +1079,42 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 }
 /*FUNCTION:------------------------------------------------------
  *  NAME
- *      dissect_ieee802154_p_inf_elem_mlme_content
+ *      dissect_802154_h_ie_time_correction
+ *  DESCRIPTION
+ *      Dissector helper, parses and displays the information element(s).
+ *
+ *  PARAMETERS
+ *      ieee802154_packet   *packet - Packet info structure.
+ *      tvbuff_t    *tvb    - pointer to buffer containing raw packet.
+ *      packet_info *pinfo  - pointer to packet information fields
+ *      proto_tree  *tree   - pointer to data tree wireshark uses to display packet.
+ *      ieee802154_packet *packet   - IEEE 802.15.4 packet information.
+ *      guint       offset  - offset into the tvb to find the FCF.
+ *  RETURNS
+ *      void
+ *---------------------------------------------------------------
+ */
+static void
+dissect_802154_h_ie_time_correction(tvbuff_t *tvb, proto_tree *h_inf_elem_tree, ieee802154_packet *packet, guint *offset){
+
+    guint16     time_correction;
+    guint16     time_correction_final;
+    proto_tree  *h_inf_elem_tree_payload = NULL;
+
+    time_correction = tvb_get_letohs(tvb, *offset);
+    time_correction_final = ~time_correction;
+
+    h_inf_elem_tree_payload = proto_tree_add_subtree_format(h_inf_elem_tree, tvb, *offset, 2, ett_ieee802154_h_ie_payload, NULL,
+                "Data: %s Content(0x%d)",
+                val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements_defined, "Unknown"),  time_correction);
+
+    if (h_inf_elem_tree_payload){
+        proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction, tvb, *offset, 2, time_correction_final);    
+    }
+} 
+/*FUNCTION:------------------------------------------------------
+ *  NAME
+ *      dissect_802154_p_ie_sh_mlme_tsch_sync
  *  DESCRIPTION
  *      Dissector for IEEE 802.15.4 non-ASK PHY packet with an FCS containing
  *      a 16-bit CRC value.
@@ -1112,7 +1153,7 @@ dissect_802154_p_ie_sh_mlme_tsch_sync(tvbuff_t *tvb, proto_tree *p_inf_elem_tree
 }
 /*FUNCTION:------------------------------------------------------
  *  NAME
- *      dissect_ieee802154_p_inf_elem_mlme_content
+ *      dissect_802154_p_ie_sh_mlme_tsch_slotframe_link
  *  DESCRIPTION
  *      Dissector for IEEE 802.15.4 non-ASK PHY packet with an FCS containing
  *      a 16-bit CRC value.
@@ -1189,8 +1230,7 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
 }
 /*FUNCTION:------------------------------------------------------
  *  NAME
- *      dissect_ieee802154_p_inf_elem_mlme_content IEEE802154_P_IE_CHANNEL_HOPPING_LG
- *  DESCRIPTION
+ *      dissect_802154_p_ie_lg_mlme_channel_hopping
  *      Dissector for IEEE 802.15.4 non-ASK PHY packet with an FCS containing
  *      a 16-bit CRC value.
  *
@@ -1206,7 +1246,7 @@ static void
 dissect_802154_p_ie_lg_mlme_channel_hopping(tvbuff_t *tvb, packet_info *pinfo, proto_tree *p_inf_elem_tree_mlme, ieee802154_packet *packet, guint *offset){
     proto_tree *p_inf_elem_tree_mlme_payload = NULL;
     guint8     hopping_sequence_id;
-    gint  reported_len;
+    gint        reported_len;
     gint  captured_len;
     tvbuff_t  *volatile payload_tvb;
 
@@ -1234,25 +1274,6 @@ dissect_802154_p_ie_lg_mlme_channel_hopping(tvbuff_t *tvb, packet_info *pinfo, p
     *offset += packet->p_ie_mlme_lg_lenght;
 }
 
-/*FUNCTION:------------------------------------------------------
- *  NAME
- *      dissect_ieee802154_p_inf_elem_mlme_content
- *  DESCRIPTION
- *      Dissector for IEEE 802.15.4 non-ASK PHY packet with an FCS containing
- *      a 16-bit CRC value.
- *
- *  PARAMETERS
- *      tvbuff_t *tvb       - pointer to buffer containing raw packet.
- *      packet_info *pinfo  - pointer to packet information fields
- *      proto_tree *tree    - pointer to data tree wireshark uses to display packet.
- *  RETURNS
- *      void
- *---------------------------------------------------------------
- */
-//static void 
-//dissect_802154_p_ie_sh_mlme_slotfr_link(tvbuff_t *tvb, proto_tree *tree, ieee802154_packet *packet, guint *offset){
-  
-//}
 /*FUNCTION:------------------------------------------------------
  *  NAME
  *      dissect_ieee802154_nonask_phy
@@ -1363,7 +1384,7 @@ dissect_ieee802154_nofcs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
      * checks to ensure that the new reported length is not longer than the old
      * reported length (why?), and will throw an exception.
      */
-    new_tvb = tvb_new_subset(tvb, 0, -1, tvb_reported_length(tvb)+IEEE802154_FCS_LEN);
+    new_tvb = tvb_new_subset(tvb, 0, -1, tvb_captured_length(tvb)+IEEE802154_FCS_LEN);
     /* Call the common dissector. */
     dissect_ieee802154_common(new_tvb, pinfo, tree, 0);
 } /* dissect_ieee802154_nofcs */
@@ -1457,7 +1478,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     col_add_fstr(pinfo->cinfo, COL_PACKET_LENGTH, "%i", tvb_captured_length(tvb));
 
     /* Add the packet length to the filter field */
-    hidden_item = proto_tree_add_uint(ieee802154_tree, hf_ieee802154_frame_length, NULL, 0, 0, tvb_reported_length(tvb));
+    hidden_item = proto_tree_add_uint(ieee802154_tree, hf_ieee802154_frame_length, NULL, 0, 0, tvb_captured_length(tvb));
     PROTO_ITEM_SET_HIDDEN(hidden_item);
 
     /*=====================================================
@@ -1584,7 +1605,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
      *  - The Source addressing exists and
      *  - The Destination addressing doesn't exist, or the Intra-PAN bit is unset.
      * In order to match the technical discussions at the 6TiSCH plugtest telco on 2 July 2015:
-     *      THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT WITH THE BIT --PAN ID compression-- (packet->intra_pan)
+     *      THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT THE BIT --PAN ID compression-- is (packet->intra_pan)
      *       that's why the following 5 lines are commented
         
      */
@@ -1592,7 +1613,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
          ((packet->dst_addr_mode == IEEE802154_FCF_ADDR_NONE) || (!packet->intra_pan)) ) {
         /* Source PAN is present, extract it and add it to the tree. */
         /* In order to match the technical discussions at the 6TiSCH plugtest telco on 2 July 2015:
-           THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT WITH THE BIT --PAN ID compression-- (packet->intra_pan)
+     *      THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT THE BIT --PAN ID compression-- is (packet->intra_pan)
             that's why the following 5 lines are commented*/
         //packet->src_pan = tvb_get_letohs(tvb, offset);
         //if (tree) {
@@ -1709,15 +1730,15 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
      * may be out of place in the tree. But we want to know if the FCS is OK in
      * case the CRC is bad (don't want to continue dissection to the NWK layer).
      */
-    if (tvb_bytes_exist(tvb, tvb_reported_length(tvb)-IEEE802154_FCS_LEN, IEEE802154_FCS_LEN)) {
+    if (tvb_bytes_exist(tvb, tvb_captured_length(tvb)-IEEE802154_FCS_LEN, IEEE802154_FCS_LEN)) {
         /* The FCS is in the last two bytes of the packet. */
-        guint16     fcs = tvb_get_letohs(tvb, tvb_reported_length(tvb)-IEEE802154_FCS_LEN);
+        guint16     fcs = tvb_get_letohs(tvb, tvb_captured_length(tvb)-IEEE802154_FCS_LEN);
         /* Check if we are expecting a CC2420-style FCS*/
         if (options & DISSECT_IEEE802154_OPTION_CC24xx) {
             fcs_ok = (fcs & IEEE802154_CC24xx_CRC_OK);
         }
         else {
-            guint16 fcs_calc = ieee802154_crc_tvb(tvb, tvb_reported_length(tvb)-IEEE802154_FCS_LEN);
+            guint16 fcs_calc = ieee802154_crc_tvb(tvb, tvb_captured_length(tvb)-IEEE802154_FCS_LEN);
             fcs_ok = (fcs == fcs_calc);
         }
     }
@@ -1876,7 +1897,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
         /* Get the unencrypted data if decryption failed.  */
         if (!payload_tvb) {
             /* Deal with possible truncation and the FCS field at the end. */
-            gint            reported_len = tvb_reported_length(tvb)-offset-IEEE802154_FCS_LEN;
+            gint            reported_len = tvb_captured_length(tvb)-offset-IEEE802154_FCS_LEN;
             gint            captured_len = tvb_captured_length(tvb)-offset;
             if (reported_len < captured_len) captured_len = reported_len;
             payload_tvb = tvb_new_subset(tvb, offset, captured_len, reported_len);
@@ -1931,7 +1952,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
     /* Plaintext Payload. */
     else {
         /* Deal with possible truncation and the FCS field at the end. */
-        gint            reported_len = tvb_reported_length(tvb)-offset-IEEE802154_FCS_LEN;
+        gint            reported_len = tvb_captured_length(tvb)-offset-IEEE802154_FCS_LEN;
         gint            captured_len = tvb_captured_length(tvb)-offset;
         if (reported_len < captured_len) captured_len = reported_len;
         payload_tvb = tvb_new_subset(tvb, offset, captured_len, reported_len);
@@ -1957,7 +1978,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
             break;
         case IEEE802154_FCF_DATA:
             /* Sanity-check. */
-            if ((!fcs_ok && ieee802154_fcs_ok) || !tvb_reported_length(payload_tvb)) {
+            if ((!fcs_ok && ieee802154_fcs_ok) || !tvb_captured_length(payload_tvb)) {
                 call_dissector(data_handle, payload_tvb, pinfo, tree);
                 break;
             }
@@ -1999,7 +2020,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
      */
 dissect_ieee802154_fcs:
     /* The FCS should be the last bytes of the reported packet. */
-    offset = tvb_reported_length(tvb)-IEEE802154_FCS_LEN;
+    offset = tvb_captured_length(tvb)-IEEE802154_FCS_LEN;
     /* Dissect the FCS only if it exists (captures which don't or can't get the
      * FCS will simply truncate the packet to omit it, but should still set the
      * reported length to cover the original packet length), so if the snapshot
@@ -2257,7 +2278,7 @@ dissect_ieee802154_assoc_req(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree
     proto_tree_add_bitmask_list(subtree, tvb, 0, 1, capability, ENC_NA);
 
     /* Call the data dissector for any leftover bytes. */
-    if (tvb_reported_length(tvb) > 1) {
+    if (tvb_captured_length(tvb) > 1) {
         call_dissector(data_handle, tvb_new_subset_remaining(tvb, 1), pinfo, tree);
     }
 } /* dissect_ieee802154_assoc_req */
@@ -2512,7 +2533,7 @@ dissect_ieee802154_gtsreq(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, i
     proto_tree_add_bitmask_list(subtree, tvb, 0, 1, characteristics, ENC_NA);
 
     /* Call the data dissector for any leftover bytes. */
-    if (tvb_reported_length(tvb) > 1) {
+    if (tvb_captured_length(tvb) > 1) {
         call_dissector(data_handle, tvb_new_subset_remaining(tvb, 1), pinfo, tree);
     }
 } /* dissect_ieee802154_gtsreq */
@@ -2665,7 +2686,7 @@ dissect_ieee802154_decrypt(tvbuff_t *tvb, guint offset, packet_info *pinfo, ieee
 
     /* Get the captured and on-the-wire length of the payload. */
     M = IEEE802154_MIC_LENGTH(packet->security_level);
-    reported_len = tvb_reported_length_remaining(tvb, offset) - IEEE802154_FCS_LEN - M;
+    reported_len = tvb_captured_length_remaining(tvb, offset) - IEEE802154_FCS_LEN - M;
     if (reported_len < 0) {
         *status = DECRYPT_PACKET_TOO_SMALL;
         return NULL;
@@ -3308,7 +3329,7 @@ void proto_register_ieee802154(void)
         { &hf_ieee802154_h_ie_type,
         { "Header IE. This bit must be unset",                  "wpan.h_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
             "Type 0 Header, Type 1 Payload.", HFILL }}, 
-/* ---------------------------------Information Elements added by jmms --------------------------------------------*/
+/* ---------------------------------Information Elements --------------------------------------------*/
 
         /* Payload Information Elements specific fields */
         { &hf_ieee802154_p_ie_content_lenght,
@@ -3322,7 +3343,7 @@ void proto_register_ieee802154(void)
         { &hf_ieee802154_p_ie_type,
         { "Payload IE. This bit must be set to 1",                  "wpan.p_ie_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_IE_TYPE,
             "Type 0 Header, Type 1 Payload.", HFILL }}, 
-/* ---------------------------------Information Elements added by jmms --------------------------------------------*/
+/* ---------------------------------Information Elements --------------------------------------------*/
 
          /* MLME Short Payload Information Elements specific fields */
         { &hf_ieee802154_p_ie_mlme_sh_lenght,
@@ -3336,7 +3357,7 @@ void proto_register_ieee802154(void)
         { &hf_ieee802154_p_ie_mlme_type,
         { "MLME Information Element type (Short = FALSE - Long = TRUE) ",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_MLME_TYPE,
             "Type 0 Short, Type 1 Long.", HFILL }}, 
-/* ---------------------------------Information Elements added by jmms --------------------------------------------*/   
+/* ---------------------------------Information Elements --------------------------------------------*/   
 
         /* MLME Long Payload Information Elements specific fields */
         { &hf_ieee802154_p_ie_mlme_lg_lenght,
@@ -3347,10 +3368,12 @@ void proto_register_ieee802154(void)
         { "MLME Long Information Element ID",                     "wpan.p_ie_mlme_lg_id", FT_UINT16, BASE_HEX, VALS(ieee802154_h_mlme_sub_long_information_elements),
             IEEE802154_P_MLME_LONG_ID, NULL, HFILL }},   
 
-        /*{ &hf_ieee802154_p_ie_mlme_type,
-        { "MLME Short Information Element type",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_H_IE_TYPE,
-            "Type 0 Short, Type 1 Long.", HFILL }}, */
+/*------------------------------Header Information Element ---------------------------------------------------*/
 
+        
+        { &hf_ieee802154_h_ie_time_correction,
+        { "Time Correction",                       "wpan.h_ie_time_correction", FT_UINT16, BASE_DEC, NULL, 0x0,
+            NULL, HFILL }},
  /* ---------------------------- Payload content MLME short and long Nested IE ----------------------------------------*/
         
 
@@ -3394,7 +3417,7 @@ void proto_register_ieee802154(void)
         { "Hopping Sequence ID",                   "wpan.p_ie_mlme_lg_hopping_sequence_id", FT_UINT8, BASE_HEX, NULL, 0x0,
             NULL, HFILL }},
 
-/* ---------------------------------Information Elements added by jmms --------------------------------------------*/  
+/* ------------------------------------------------------------------------------------------------------------------------------------*/  
         { &hf_ieee802154_frame_length,
         { "Frame Length",                   "wpan.frame_length", FT_UINT8, BASE_DEC, NULL, 0x0,
             "Frame Length as reported from lower layer", HFILL }},
@@ -3682,7 +3705,8 @@ void proto_register_ieee802154(void)
         &ett_ieee802154_mlme_sh_p_ie,
         &ett_ieee802154_mlme_lg_p_ie,
         &ett_ieee802154_mlme_payload,
-        &ett_ieee802154_mlme_payload_data
+        &ett_ieee802154_mlme_payload_data,
+        &ett_ieee802154_h_ie_payload
     };
 
     static ei_register_info ei[] = {

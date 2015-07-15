@@ -241,6 +241,10 @@
 #define IEEE802154_P_IE_ID                          0x7800
 #define IEEE802154_P_IE_TYPE                        0x8000 
 
+/*----- Bit-mask for the Time Correction Header IE ------*/
+#define IEEE802154_H_IE_TIME_CORR_POS_ACK           0x0FFF
+#define IEEE802154_H_IE_TIME_CORR_NEG_ACK           0x8000
+
 /* Bit-mask for the MLME Short Format of Nested IE */
 #define IEEE802154_P_MLME_SHORT_LENGTH              0x00FF
 #define IEEE802154_P_MLME_SHORT_ID                  0x7F00
