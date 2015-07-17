@@ -342,7 +342,10 @@ static int hf_ieee802154_p_ie_mlme_lg_lenght = -1;
 static int hf_ieee802154_p_ie_mlme_lg_id  = -1;
 
 /* Header Information Elements payload */
-static int hf_ieee802154_h_ie_time_correction = -1;
+static int hf_ieee802154_h_ie_time_correction1 = -1;
+static int hf_ieee802154_h_ie_time_correction2 = -1;
+static int hf_ieee802154_h_ie_time_correction3 = -1;
+static int hf_ieee802154_h_ie_time_correction4 = -1;
 
 /* Payload MLME Information Elements */
 static int hf_ieee802154_p_ie_mlme_sh_tsch_asn = -1;
@@ -1102,14 +1105,31 @@ dissect_802154_h_ie_time_correction(tvbuff_t *tvb, proto_tree *h_inf_elem_tree, 
     proto_tree  *h_inf_elem_tree_payload = NULL;
 
     time_correction = tvb_get_letohs(tvb, *offset);
-    time_correction_final = ~time_correction;
+    time_correction_final = (~time_correction)  & 0x0FFF;
 
     h_inf_elem_tree_payload = proto_tree_add_subtree_format(h_inf_elem_tree, tvb, *offset, 2, ett_ieee802154_h_ie_payload, NULL,
                 "Data: %s Content(0x%d)",
                 val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements_defined, "Unknown"),  time_correction);
 
-    if (h_inf_elem_tree_payload){
-        proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction, tvb, *offset, 2, time_correction_final);    
+    if((time_correction <= 0) & (time_correction <= 0x7ff)){
+        if (h_inf_elem_tree_payload){
+            proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction1, tvb, *offset, 2, time_correction_final);    
+        }
+    }
+    else if ((time_correction <= 0x0800) & (time_correction <= 0x0fff)){
+        if (h_inf_elem_tree_payload){
+            proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction2, tvb, *offset, 2, time_correction_final);    
+        }
+    }
+    else if ((time_correction <= 0x8000) & (time_correction <= 0x87ff)){
+        if (h_inf_elem_tree_payload){
+            proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction3, tvb, *offset, 2, time_correction_final);    
+        }
+    }
+    else if ((time_correction <= 0x8800) & (time_correction <= 0x8fff )){
+        if (h_inf_elem_tree_payload){
+            proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction4, tvb, *offset, 2, time_correction_final);    
+        }
     }
 } 
 /*FUNCTION:------------------------------------------------------
@@ -1215,7 +1235,7 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
 
             p_inf_elem_tree_mlme_payload_data = proto_tree_add_subtree_format(p_inf_elem_tree_mlme_payload, tvb, *offset, 5, ett_ieee802154_mlme_payload_data, NULL,
                     "Data: %s (0x%llx)",
-                    "Link Information", (unsigned long long)link_inf);
+                    "Link Information", (unsigned long long) link_inf);
 
             if (p_inf_elem_tree_mlme_payload_data){
 
@@ -3371,8 +3391,20 @@ void proto_register_ieee802154(void)
 /*------------------------------Header Information Element ---------------------------------------------------*/
 
         
-        { &hf_ieee802154_h_ie_time_correction,
-        { "Time Correction",                       "wpan.h_ie_time_correction", FT_UINT16, BASE_DEC, NULL, 0x0,
+        { &hf_ieee802154_h_ie_time_correction1,
+        { "Ack - positive time correction",                       "wpan.h_ie_time_correction", FT_UINT16, BASE_DEC, NULL, 0x0,
+            NULL, HFILL }},
+
+         { &hf_ieee802154_h_ie_time_correction2,
+        { "Ack - negative time correction",                       "wpan.h_ie_time_correction", FT_UINT16, BASE_DEC, NULL, 0x0,
+            NULL, HFILL }},
+
+         { &hf_ieee802154_h_ie_time_correction3,
+        { "Non Ack - positive time correction",                       "wpan.h_ie_time_correction", FT_UINT16, BASE_DEC, NULL, 0x0,
+            NULL, HFILL }},
+
+         { &hf_ieee802154_h_ie_time_correction4,
+        { "Non Ack - negative time correction",                       "wpan.h_ie_time_correction", FT_UINT16, BASE_DEC, NULL, 0x0,
             NULL, HFILL }},
  /* ---------------------------- Payload content MLME short and long Nested IE ----------------------------------------*/
         
