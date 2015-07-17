@@ -348,7 +348,8 @@ static int hf_ieee802154_h_ie_time_correction3 = -1;
 static int hf_ieee802154_h_ie_time_correction4 = -1;
 
 /* Payload MLME Information Elements */
-static int hf_ieee802154_p_ie_mlme_sh_tsch_asn = -1;
+static int hf_ieee802154_p_ie_mlme_sh_tsch_asn_lower = -1;
+static int hf_ieee802154_p_ie_mlme_sh_tsch_asn_higher = -1;
 static int hf_ieee802154_p_ie_mlme_sh_tsch_join_p = -1;
 static int hf_ieee802154_p_ie_mlme_sh_tsch_slotf_link_nb_slotf = -1;
 static int hf_ieee802154_p_ie_mlme_lg_hopping_sequence_id = -1;
@@ -1150,24 +1151,45 @@ dissect_802154_h_ie_time_correction(tvbuff_t *tvb, proto_tree *h_inf_elem_tree, 
 static void 
 dissect_802154_p_ie_sh_mlme_tsch_sync(tvbuff_t *tvb, proto_tree *p_inf_elem_tree_mlme, ieee802154_packet *packet, guint *offset){
     guint64     payload;
-    proto_tree *p_inf_elem_tree_mlme_payload = NULL;
+    proto_tree *p_inf_elem_tree_mlme_payload_1 = NULL;
+    proto_tree *p_inf_elem_tree_mlme_payload_2 = NULL;
     guint64     asn;
+    guint32     asn_lower;
+    guint8      asn_higher;
     guint8      join_p;
+    guint32     payload_lower;
+    guint8      payload_higher;
+    guint16     payload_2;
 
-    payload = tvb_get_letoh64(tvb, *offset);
-    payload = payload & 0x0000FFFFFFFFFFFF;
-    asn     = (payload & 0x000000FFFFFFFFFF);
-    join_p  = tvb_get_guint8(tvb,*offset+5);
+    payload         = tvb_get_letoh64(tvb, *offset);
+    payload_lower   = payload & 0x00000000FFFFFFFF;
+    payload_higher  = (payload & 0x0000FFFF00000000) >> 32;
+    asn             = (payload & 0x000000FFFFFFFFFF);
+    asn_lower       = asn & 0xFFFFFFFF;
+    asn_higher      = (asn & 0x000000FF00000000) >> 32;
+    join_p          = tvb_get_guint8(tvb,*offset+5);
+    payload_2       = ((join_p << 8) + payload_higher);
 
-
-    p_inf_elem_tree_mlme_payload = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, 6, ett_ieee802154_mlme_payload, NULL,
-                "Data: %s Content(0x%llx)",
-                val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements_defined, "Unknown"), (unsigned long long) payload);
+    p_inf_elem_tree_mlme_payload_1 = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, 4, ett_ieee802154_mlme_payload, NULL,
+                "Data: %s Content(0x%u)",
+                val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements_defined, "Unknown"), payload_lower);
 
     if (p_inf_elem_tree_mlme){
       
-        proto_tree_add_item(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn, tvb, (*offset), 5, (unsigned long long) asn);
-        proto_tree_add_uint(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_join_p, tvb, (*offset)+5, 1, join_p);    
+        proto_tree_add_item(p_inf_elem_tree_mlme_payload_1, hf_ieee802154_p_ie_mlme_sh_tsch_asn_lower, tvb, (*offset), 4, asn_lower);
+        //proto_tree_add_item(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn_higher, tvb, (*offset) + 4, 1, asn_higher);
+        //proto_tree_add_uint(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_join_p, tvb, (*offset)+5, 1, join_p);    
+    }
+
+    p_inf_elem_tree_mlme_payload_2 = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset + 4, 2, ett_ieee802154_mlme_payload, NULL,
+                "Data: %s Content(0x%d)",
+                val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements_defined, "Unknown"), payload_2);
+
+    if (p_inf_elem_tree_mlme){
+      
+        //proto_tree_add_item(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn_lower, tvb, (*offset), 4, asn_lower);
+        proto_tree_add_item(p_inf_elem_tree_mlme_payload_2, hf_ieee802154_p_ie_mlme_sh_tsch_asn_higher, tvb, (*offset) + 4, 1, asn_higher);
+        proto_tree_add_uint(p_inf_elem_tree_mlme_payload_2, hf_ieee802154_p_ie_mlme_sh_tsch_join_p, tvb, (*offset)+5, 1, join_p);    
     }
     *offset += packet->p_ie_mlme_sh_lenght;
 }
@@ -1203,8 +1225,10 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
     proto_tree *p_inf_elem_tree_mlme_payload_data = NULL;
     nb_slotframes       = tvb_get_guint8(tvb, *offset);
     nb_slotframes_aux   = nb_slotframes;
+    //tvbuff_t  *volatile payload_tvb;
     
-    while ( nb_slotframes_aux > 0 ){ 
+    while ( nb_slotframes_aux > 0 ){
+     //   payload_tvb         = tvb_new_subset(tvb, *offset, captured_len, reported_len); 
         header_slotf_link   = tvb_get_letoh64(tvb, *offset);
         header_slotf_link   = header_slotf_link & 0x000000FFFFFFFFFF;
         slotframe_handle    = tvb_get_guint8(tvb, *offset+1);
@@ -1212,7 +1236,7 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
         nb_links            = tvb_get_guint8(tvb, *offset+4); 
         nb_links_aux        = nb_links;
         
-        p_inf_elem_tree_mlme_payload = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, 5, ett_ieee802154_mlme_payload, NULL,
+        p_inf_elem_tree_mlme_payload = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, 8, ett_ieee802154_mlme_payload, NULL,
                     "Data: %s Content(0x%llx)",
                     "Slotframe and Link IE", (unsigned long long) header_slotf_link);
 
@@ -1233,7 +1257,7 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
             channel_Offset  = tvb_get_letohs(tvb, *offset+2);
             link_options    = tvb_get_guint8(tvb, *offset+4);
 
-            p_inf_elem_tree_mlme_payload_data = proto_tree_add_subtree_format(p_inf_elem_tree_mlme_payload, tvb, *offset, 5, ett_ieee802154_mlme_payload_data, NULL,
+            p_inf_elem_tree_mlme_payload_data = proto_tree_add_subtree_format(p_inf_elem_tree_mlme_payload, tvb, *offset, 8, ett_ieee802154_mlme_payload_data, NULL,
                     "Data: %s (0x%llx)",
                     "Link Information", (unsigned long long) link_inf);
 
@@ -3409,9 +3433,13 @@ void proto_register_ieee802154(void)
  /* ---------------------------- Payload content MLME short and long Nested IE ----------------------------------------*/
         
 
-        { &hf_ieee802154_p_ie_mlme_sh_tsch_asn,
-        { "Absolut Slot Number",                   "wpan.p_ie_mlme_sh_asn", FT_UINT64, BASE_DEC, NULL, 0x0,
+        { &hf_ieee802154_p_ie_mlme_sh_tsch_asn_higher,
+        { "Absolut Slot Number MSB (byte 4)",                   "wpan.p_ie_mlme_sh_asn", FT_UINT64, BASE_DEC, NULL, 0x0,
             NULL, HFILL }},
+
+        { &hf_ieee802154_p_ie_mlme_sh_tsch_asn_lower,
+        { "Absolut Slot Number (bytes 0 - 3)",                   "wpan.p_ie_mlme_sh_asn", FT_UINT64, BASE_DEC, NULL, 0x0,
+            NULL, HFILL }},        
    
         { &hf_ieee802154_p_ie_mlme_sh_tsch_join_p,
         { "Join Priority",                   "wpan.p_ie_mlme_sh_asn", FT_UINT8, BASE_HEX, NULL, 0x0,
