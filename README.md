@@ -83,7 +83,7 @@ Installer is created at `C:\wireshark\wireshark-1.99.7\packaging\nsis`
         * `sudo apt-get install libpcap0.8-dev `
 * Confiure and build
     * `./configure`
-    * `./make`
+    * `make`
 * Run 
     * `./wireshark`
 * Or create the deb package
