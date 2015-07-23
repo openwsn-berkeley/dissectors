@@ -915,7 +915,7 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         /* Add the Payload Information Element's header to the protocol tree. */
         if (tree) {
             /*  Create the FCF subtree. */
-            p_inf_elem_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2, ett_ieee802154_p_ie, NULL,
+            p_inf_elem_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2 + packet->p_ie_content_lenght, ett_ieee802154_p_ie, NULL,
                     "Payload Information Elements: %s (0x%04x)",
                     val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"), payload_ie);
 
@@ -1066,10 +1066,6 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                         case IEEE802154_P_IE_TSCH_SLOTFR_LINK_SH:
                             dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvb, p_inf_elem_tree_mlme, offset);  
                             break;
-                        //default:
-                        //    call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_mlme);
-                        //    *offset += packet->p_ie_mlme_sh_lenght;
-                        //    break; 
                     }
 
                 }
@@ -1106,7 +1102,7 @@ dissect_802154_h_ie_time_correction(tvbuff_t *tvb, proto_tree *h_inf_elem_tree, 
     proto_tree  *h_inf_elem_tree_payload = NULL;
 
     time_correction = tvb_get_letohs(tvb, *offset);
-    time_correction_final = (~time_correction)  & 0x0FFF;
+    time_correction_final = (time_correction)  & 0x0FFF;
 
     h_inf_elem_tree_payload = proto_tree_add_subtree_format(h_inf_elem_tree, tvb, *offset, 2, ett_ieee802154_h_ie_payload, NULL,
                 "Data: %s Content(0x%d)",
@@ -1312,7 +1308,6 @@ dissect_802154_p_ie_lg_mlme_channel_hopping(tvbuff_t *tvb, packet_info *pinfo, p
 
         //proto_tree_add_item(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn, tvb, (*offset)+1, packet->p_ie_mlme_lg_lenght-1, );
         call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_mlme_payload);
-
 
     }
     *offset += packet->p_ie_mlme_lg_lenght;
@@ -1859,12 +1854,7 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
         dissect_ieee802154_h_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset);
         if (packet->p_ie_present) {
                 dissect_ieee802154_p_inf_elem(tvb, pinfo, ieee802154_tree, packet, &offset); 
-                /*if (packet->p_ie_mlme_present) {
-                    dissect_ieee802154_p_inf_elem_mlme(tvb, pinfo, ieee802154_tree, packet, &offset);             
-                }*/
             }
-
-        /*goto dissect_ieee802154_fcs; */
     }
 
     if (packet->frame_type == IEEE802154_FCF_BEACON) {
