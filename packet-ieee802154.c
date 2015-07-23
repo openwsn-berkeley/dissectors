@@ -1147,12 +1147,12 @@ static void
 dissect_802154_p_ie_sh_mlme_tsch_sync(tvbuff_t *tvb, proto_tree *p_inf_elem_tree_mlme, ieee802154_packet *packet, guint *offset){
     guint64     payload;
     proto_tree *p_inf_elem_tree_mlme_payload = NULL;
-    guint64     asn;
+    //guint64     asn;
     guint8      join_p;
 
     payload = tvb_get_letoh64(tvb, *offset);
     payload = payload & 0x0000FFFFFFFFFFFF;
-    asn     = (payload & 0x000000FFFFFFFFFF);
+    //asn     = (payload & 0x000000FFFFFFFFFF);
     join_p  = tvb_get_guint8(tvb,*offset+5);
 
 
