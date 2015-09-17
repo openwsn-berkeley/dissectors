@@ -782,6 +782,7 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         default:
             if (!packet->keep_dissecting > 0) {  
                 condition = FALSE;
+            } else {
                 if(strcmp(val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements_defined, "Unknown"), "Unknown") != 0) {
                     switch (packet->h_ie_id){
                         case IEEE802154_H_IE_TIME_CORRECTION:
