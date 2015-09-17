@@ -730,7 +730,7 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
     gboolean condition;
     proto_tree *h_inf_elem_tree = NULL;
     condition = TRUE;
-    packet->keep_dissecting = tvb_captured_length(tvb) - IEEE802154_FCS_LEN - size_header (packet);
+    packet->keep_dissecting = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header (packet);
     packet->h_ie_size = 0;
 
     while (condition) {    
@@ -894,7 +894,7 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         p_inf_elem_tree = proto_item_add_subtree(tree, ett_ieee802154_p_ie);
     }
     condition = TRUE;
-    packet->keep_dissecting_p_ie = tvb_captured_length(tvb) - IEEE802154_FCS_LEN - size_header(packet) - packet->h_ie_size;
+    packet->keep_dissecting_p_ie = tvb_reported_length(tvb) - IEEE802154_FCS_LEN - size_header(packet) - packet->h_ie_size;
 
     while (condition) {    
         guint16     payload_ie;
