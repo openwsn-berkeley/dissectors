@@ -57,7 +57,22 @@ void proto_reg_handoff_6lowpan(void);
 #define LOWPAN_PATTERN_FRAG1            0x18
 #define LOWPAN_PATTERN_FRAGN            0x1c
 #define LOWPAN_PATTERN_FRAG_BITS        5
-#define LOWPAN_PATTERN_PAGING_DISPATCH	0xf0 
+
+/* 6LoWPAN Routing Header masks */
+#define LOWPAN_PATTERN_PAGING_DISPATCH	0xf0   	/* Jonathan */
+#define LOWPAN_PATTERN_6LORHC			0x04	/* Jonathan */
+#define LOWPAN_PATTERN_6LORHE			0x05	/* Jonathan */
+#define LOWPAN_PATTERN_6LORHE_CLASS		0xe000	
+#define LOWPAN_PATTERN_6LORHE_LENGTH	0x1f00	/* Jonathan */
+#define LOWPAN_PATTERN_6LORHE_TYPE		0x00ff
+#define LOWPAN_PATTERN_6LORH_TYPE0		0x00
+#define LOWPAN_PATTERN_6LORH_TYPE1		0x01
+#define LOWPAN_PATTERN_6LORH_TYPE2		0x02
+#define LOWPAN_PATTERN_6LORH_TYPE3		0x03
+#define LOWPAN_PATTERN_6LORH_TYPE4		0x04
+#define LOWPAN_PATTERN_6LORH_TYPE5		0x05
+#define LOWPAN_PATTERN_6LORH_TYPE6		0x06
+/*Jonathan*/
 
 /* 6LoWPAN HC1 Header */
 #define LOWPAN_HC1_SOURCE_PREFIX        0x80
@@ -196,8 +211,13 @@ void proto_reg_handoff_6lowpan(void);
 /* 6LoWPAN interface identifier length. */
 #define LOWPAN_IFC_ID_LEN               8
 /* Protocol fields handles. */
-/*Jonathan*/
+/* Jonathan */
 static int hf_6lowpan_pagenb = -1;
+static int hf_6lowpan_routing_header = -1;
+static int hf_6lowpan_6lorhe_size = -1;
+static int hf_6lowpan_6lorhc_size = -1;
+static int hf_6lowpan_6lorhe_type = -1;
+static int hf_6lowpan_6lorhe_hoplimit = -1;
 /*--------------------------------------*/
 static int proto_6lowpan = -1;
 static int hf_6lowpan_pattern = -1;
@@ -286,6 +306,7 @@ static gint ett_6lowpan_hc1 = -1;
 static gint ett_6lowpan_hc1_encoding = -1;
 static gint ett_6lowpan_hc2_udp = -1;
 static gint ett_6lowpan_iphc = -1;
+static gint ett_lowpan_routing_header_dispatch = -1; /*Jonathan*/
 static gint ett_6lowpan_nhc_ext = -1;
 static gint ett_6lowpan_nhc_udp = -1;
 static gint ett_6lowpan_bcast = -1;
@@ -305,6 +326,22 @@ static dissector_handle_t       data_handle;
 static dissector_handle_t       ipv6_handle;
 
 /* Value Strings */
+
+static const value_string lowpan_patterns_rh_type [] = {
+	{ LOWPAN_PATTERN_6LORH_TYPE0,        "0" },
+    { LOWPAN_PATTERN_6LORH_TYPE1,        "1" },
+    { LOWPAN_PATTERN_6LORH_TYPE2,        "2" },
+    { LOWPAN_PATTERN_6LORH_TYPE3,        "3" },
+    { LOWPAN_PATTERN_6LORH_TYPE4,        "4" },
+	{ LOWPAN_PATTERN_6LORH_TYPE5,        "5" },
+	{ LOWPAN_PATTERN_6LORH_TYPE6,        "6" },
+    { 0, NULL }
+};
+static const value_string lowpan_patterns_rh [] = {
+    { LOWPAN_PATTERN_6LORHC,        "Critical Routing Header" },
+    { LOWPAN_PATTERN_6LORHE,        "Elective Routing Header" },
+    { 0, NULL }
+};
 static const value_string lowpan_patterns [] = {
     { LOWPAN_PATTERN_NALP,          "Not a LoWPAN frame" },
     { LOWPAN_PATTERN_IPV6,          "Uncompressed IPv6" },
@@ -498,6 +535,7 @@ static tvbuff_t *   dissect_6lowpan_mesh        (tvbuff_t *tvb, packet_info *pin
 static tvbuff_t *   dissect_6lowpan_frag_first  (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, const guint8 *siid, const guint8 *diid);
 static tvbuff_t *   dissect_6lowpan_frag_middle (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 static void         dissect_6lowpan_unknown     (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
+static tvbuff_t * 	dissect_6lowpan_6loRH 		(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dgram_size, const guint8 *siid, const guint8 *diid);
 
 /* Helper functions. */
 static gboolean     lowpan_dlsrc_to_ifcid   (packet_info *pinfo, guint8 *ifcid);
@@ -1028,23 +1066,6 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
         if (!next) return tvb_captured_length(tvb);
     }
 
-    /* Jonathan messing around - 6loRH*/
-
-    if (tvb_get_bits8(next, 0, 4) == 0b1111) {
-    	if (tree) {
-        proto_tree_add_bits_item(lowpan_tree, hf_6lowpan_pagenb, tvb, 4, 4, 0);
-    	}
-    	tvb_new_subset_remaining(tvb, 1);
-   }
-    /*
-    else {
-    	if (tree) {
-        proto_tree_add_bits_item(lowpan_tree, hf_6lowpan_pagenb, tvb, 4, 4, 0);
-    	}
-	}
-	*/
-    /*--------------------------------------------------------------------------------------------------*/
-
     /* After the mesh and broadcast headers, process dispatch codes recursively. */
     /* Fragmentation headers.*/
     if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_FRAG_BITS) == LOWPAN_PATTERN_FRAG1) {
@@ -1053,6 +1074,16 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_FRAG_BITS) == LOWPAN_PATTERN_FRAGN) {
         next = dissect_6lowpan_frag_middle(next, pinfo, lowpan_tree);
     }
+    /* Jonathan messing around - 6loRH*/
+
+    else if (tvb_get_bits8(next, 0, 4) == 0b1111) {
+    	if (tree) {
+        proto_tree_add_bits_item(lowpan_tree, hf_6lowpan_pagenb, tvb, 4, 4, 0);
+    	}
+    	next = tvb_new_subset_remaining(tvb, 1);
+    	next = dissect_6lowpan_6loRH(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
+   }
+    /*--------------------------------------------------------------------------------------------------*/
     /* Uncompressed IPv6 packets. */
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPV6_BITS) == LOWPAN_PATTERN_IPV6) {
         next = dissect_6lowpan_ipv6(next, pinfo, lowpan_tree);
@@ -1076,12 +1107,84 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
     }
     return tvb_captured_length(tvb);
 } /* dissect_6lowpan */
-/*
-statuc tvbuff
-dissect_6lowpan_6loRH()
+
+/*FUNCTION:------------------------------------------------------
+ *  NAME
+ *      dissect_6lowpan_6loRH
+ *  DESCRIPTION
+ *      Dissector routine for 6lowpan-RH.
+ *
+ *      This is one of the final encapsulation types, and will            falso
+ *      returned an uncompressed IPv6 datagram (or fragment 			falso	
+ *      thereof).
+ *  PARAMETERS
+ *      tvb             ; packet buffer.
+ *      pinfo           ; packet info.
+ *      tree            ; 6LoWPAN display tree.
+ *      offset          ; offset to the start of the header.
+ *  RETURNS
+ *      tvbuff_t *      ; The remaining payload to be parsed.
+ *---------------------------------------------------------------
+ */
+
+static tvbuff_t *
+dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dgram_size, const guint8 *siid, const guint8 *diid)
 {
 
-}*/
+	gint                offset = 0;
+	gint                length = 0;
+	guint16				loRH_flags;
+	proto_tree *        loRH_tree;
+	guint16				loRHE_length;
+	guint8				loRHE_type;
+	guint16				loRHE_class;
+	guint8				loRHE_hoplimit;
+	gint 				condition = 1;
+
+
+	
+	while(condition > 0){
+	condition -= 1 ;
+	/*Create the tree*/
+	loRH_tree = proto_tree_add_subtree(tree, tvb, offset, 2, ett_lowpan_routing_header_dispatch, NULL, "6LoWPAN Routing Header Dispatch");
+	/* Get and display the pattern. */
+    proto_tree_add_bits_item(loRH_tree, hf_6lowpan_routing_header, tvb, 8*offset, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);
+    /*proto_tree_add_bits_item(iphc_tree, hf_6lowpan_pattern, tvb, 0, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);*/
+    /*=====================================================
+     * Parse IPHC Header flags.
+     *=====================================================
+     */
+     loRH_flags	= tvb_get_ntohs(tvb, offset);
+     loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
+     loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
+     loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE) >> 0;
+     loRHE_hoplimit = tvb_get_guint8(tvb, offset+2);
+     if (tree) {
+     	if (loRHE_class == LOWPAN_PATTERN_6LORHE){
+     		condition = 1 ;
+     		proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     		proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     		proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset+2, 1, loRHE_hoplimit);
+     		offset += 2 + loRHE_length;
+     	}
+     	else if (loRHE_class == LOWPAN_PATTERN_6LORHC){
+     		condition = 1 ;
+     		proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     		proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     		offset += 2 + loRHE_length;
+     	}
+     	else condition -= 1 ;	
+     }
+     loRH_flags	= tvb_get_ntohs(tvb, offset);
+     loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
+     if ((loRHE_class) != LOWPAN_PATTERN_6LORHE){
+     	if ((loRHE_class) != LOWPAN_PATTERN_6LORHC){
+     		condition -= 1;
+     	}
+     }
+	}  ;   
+    return tvb_new_subset_remaining(tvb, offset); 
+}
 /*FUNCTION:------------------------------------------------------
  *  NAME
  *      dissect_6lowpan_ipv6
@@ -2172,7 +2275,7 @@ dissect_6lowpan_iphc_nhc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gi
          * disallows sending UDP datagrams without checksums. Likewise, 6LoWPAN
          * requires that we recompute the checksum.
          *
-         * If the datagram is incomplete, then leave the checsum at 0.
+         * If the datagram is incomplete, then leave the checksum at 0.
          */
 #if 0
         /*
@@ -2654,9 +2757,26 @@ void
 proto_register_6lowpan(void)
 {
     static hf_register_info hf[] = {
-    	{ &hf_6lowpan_pagenb,
-    	  { "Page Number",                      "6lowpan.pagenb",
+    	{ &hf_6lowpan_6lorhe_hoplimit,
+    	  { "6loRH Hop Limit",               "6lowpan.rhhop.limit",
             FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+    	{ &hf_6lowpan_6lorhe_type,
+    	  { "6loRH Type",               "6lowpan.rhtype",
+            FT_UINT16, BASE_HEX, VALS(lowpan_patterns_rh_type), LOWPAN_PATTERN_6LORHE_TYPE, NULL, HFILL }},
+    	{ &hf_6lowpan_6lorhc_size,
+    	  { "6loRH Critical size",               "6lowpan.rhCsize",
+            FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
+    	{ &hf_6lowpan_6lorhe_size,
+    	  { "6loRH Elective size",               "6lowpan.rhEsize",
+            FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
+    	{ &hf_6lowpan_routing_header,
+    	  { "Routing Header 6lo",               "6lowpan.routingheader",
+            FT_UINT8, BASE_HEX, VALS(lowpan_patterns_rh), 0x0, NULL, HFILL }},
+        { &hf_6lowpan_pagenb,
+    	  { "Page Number",                      "6lowpan.pagenb",
+            FT_UINT16, 16, NULL, 0x0, NULL, HFILL }},
+        
+
         /* Common 6LoWPAN fields. */
         { &hf_6lowpan_pattern,
           { "Pattern",                        "6lowpan.pattern",
@@ -2900,6 +3020,7 @@ proto_register_6lowpan(void)
         &ett_6lowpan_hc1_encoding,
         &ett_6lowpan_hc2_udp,
         &ett_6lowpan_iphc,
+        &ett_lowpan_routing_header_dispatch, /* Jonathan */
         &ett_6lowpan_nhc_ext,
         &ett_6lowpan_nhc_udp,
         &ett_6lowpan_bcast,
