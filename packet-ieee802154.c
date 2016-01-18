@@ -463,8 +463,8 @@ static const value_string ieee802154_h_information_elements_defined[] = {
  //   { IEEE802154_H_IE_RCC_CAPAB, "RCC Capabilities IE" },
  //   { IEEE802154_H_IE_RCCN_DESC, "RCCN Descriptor IE"},
  //   { IEEE802154_H_IE_GLOBAL_TIME, "Global Time IE" },
- //   { IEEE802154_H_IE_HDR_TERM_1, "Header Termination 1 IE" },
- //   { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" },
+    { IEEE802154_H_IE_HDR_TERM_1, "Header Termination 1 IE" },
+    { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" },
     { 0, NULL }
 };
 

@@ -72,6 +72,12 @@ void proto_reg_handoff_6lowpan(void);
 #define LOWPAN_PATTERN_6LORH_TYPE4		0x04
 #define LOWPAN_PATTERN_6LORH_TYPE5		0x05
 #define LOWPAN_PATTERN_6LORH_TYPE6		0x06
+#define LOWPAN_5_RPI_BIT_O				0x1000
+#define LOWPAN_5_RPI_BIT_R				0x0800
+#define LOWPAN_5_RPI_BIT_F				0x0400
+#define LOWPAN_5_RPI_BIT_I				0x0200
+#define LOWPAN_5_RPI_BIT_K				0x0100
+
 /*Jonathan*/
 
 /* 6LoWPAN HC1 Header */
@@ -218,6 +224,12 @@ static int hf_6lowpan_6lorhe_size = -1;
 static int hf_6lowpan_6lorhc_size = -1;
 static int hf_6lowpan_6lorhe_type = -1;
 static int hf_6lowpan_6lorhe_hoplimit = -1;
+static int hf_6lowpan_5_bit_o = -1;
+static int hf_6lowpan_5_bit_r = -1;
+static int hf_6lowpan_5_bit_f = -1;
+static int hf_6lowpan_5_bit_i = -1;
+static int hf_6lowpan_5_bit_k = -1;
+
 /*--------------------------------------*/
 static int proto_6lowpan = -1;
 static int hf_6lowpan_pattern = -1;
@@ -1169,7 +1181,17 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
      	}
      	else if (loRHE_class == LOWPAN_PATTERN_6LORHC){
      		condition = 1 ;
-     		proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     		if (loRHE_type == 5){
+     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_o,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_O);	
+     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_r,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_R);
+     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_f,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_F);
+     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_i,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_I);
+     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_k,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_K);
+     		}
+     		else{
+     			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     		}
+     		
      		proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
      		offset += 2 + loRHE_length;
      	}
@@ -2757,6 +2779,21 @@ void
 proto_register_6lowpan(void)
 {
     static hf_register_info hf[] = {
+    	{ &hf_6lowpan_5_bit_o,
+          { "Context identifier extension",   "6lowpan.iphc.cid",
+            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_O, NULL, HFILL }},
+        { &hf_6lowpan_5_bit_r,
+          { "Context identifier extension",   "6lowpan.iphc.cid",
+            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_R, NULL, HFILL }},
+        { &hf_6lowpan_5_bit_f,
+          { "Context identifier extension",   "6lowpan.iphc.cid",
+            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_F, NULL, HFILL }},
+        { &hf_6lowpan_5_bit_i,
+          { "Context identifier extension",   "6lowpan.iphc.cid",
+            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_I, NULL, HFILL }},
+        { &hf_6lowpan_5_bit_k,
+          { "Context identifier extension",   "6lowpan.iphc.cid",
+            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_K, NULL, HFILL }},
     	{ &hf_6lowpan_6lorhe_hoplimit,
     	  { "6loRH Hop Limit",               "6lowpan.rhhop.limit",
             FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
