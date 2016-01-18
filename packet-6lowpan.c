@@ -77,6 +77,7 @@ void proto_reg_handoff_6lowpan(void);
 #define LOWPAN_5_RPI_BIT_F				0x0400
 #define LOWPAN_5_RPI_BIT_I				0x0200
 #define LOWPAN_5_RPI_BIT_K				0x0100
+#define LOWPAN_5_RPI_BITS_IK			0x0300
 
 /*Jonathan*/
 
@@ -229,6 +230,9 @@ static int hf_6lowpan_5_bit_r = -1;
 static int hf_6lowpan_5_bit_f = -1;
 static int hf_6lowpan_5_bit_i = -1;
 static int hf_6lowpan_5_bit_k = -1;
+static int hf_6lowpan_sender_rank1 = -1;
+static int hf_6lowpan_sender_rank2 = -1;
+static int hf_6lowpan_rpl_instance = -1;
 
 /*--------------------------------------*/
 static int proto_6lowpan = -1;
@@ -547,7 +551,7 @@ static tvbuff_t *   dissect_6lowpan_mesh        (tvbuff_t *tvb, packet_info *pin
 static tvbuff_t *   dissect_6lowpan_frag_first  (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, const guint8 *siid, const guint8 *diid);
 static tvbuff_t *   dissect_6lowpan_frag_middle (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 static void         dissect_6lowpan_unknown     (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
-static tvbuff_t * 	dissect_6lowpan_6loRH 		(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dgram_size, const guint8 *siid, const guint8 *diid);
+static tvbuff_t * 	dissect_6lowpan_6loRH 		(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dgram_size , const guint8 *siid, const guint8 *diid);
 
 /* Helper functions. */
 static gboolean     lowpan_dlsrc_to_ifcid   (packet_info *pinfo, guint8 *ifcid);
@@ -1086,6 +1090,10 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_FRAG_BITS) == LOWPAN_PATTERN_FRAGN) {
         next = dissect_6lowpan_frag_middle(next, pinfo, lowpan_tree);
     }
+    /* Uncompressed IPv6 packets. */
+    else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPV6_BITS) == LOWPAN_PATTERN_IPV6) {
+        next = dissect_6lowpan_ipv6(next, pinfo, lowpan_tree);
+    }
     /* Jonathan messing around - 6loRH*/
 
     else if (tvb_get_bits8(next, 0, 4) == 0b1111) {
@@ -1094,12 +1102,14 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
     	}
     	next = tvb_new_subset_remaining(tvb, 1);
     	next = dissect_6lowpan_6loRH(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
-   }
+    	if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPHC_BITS) == LOWPAN_PATTERN_IPHC) {
+        	next = dissect_6lowpan_iphc(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
+        if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_HC1_BITS) == LOWPAN_PATTERN_HC1) {
+        next = dissect_6lowpan_hc1(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
+   	} 
+	}
+	}
     /*--------------------------------------------------------------------------------------------------*/
-    /* Uncompressed IPv6 packets. */
-    else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPV6_BITS) == LOWPAN_PATTERN_IPV6) {
-        next = dissect_6lowpan_ipv6(next, pinfo, lowpan_tree);
-    }
     /* Compressed IPv6 packets. */
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_HC1_BITS) == LOWPAN_PATTERN_HC1) {
         next = dissect_6lowpan_hc1(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
@@ -1145,12 +1155,16 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
 
 	gint                offset = 0;
 	gint                length = 0;
+	gint 				IK;
 	guint16				loRH_flags;
 	proto_tree *        loRH_tree;
 	guint16				loRHE_length;
 	guint8				loRHE_type;
 	guint16				loRHE_class;
 	guint8				loRHE_hoplimit;
+	guint8 				rpl_instance;
+	guint16				sender_rank2;
+	guint8 				sender_rank1;
 	gint 				condition = 1;
 
 
@@ -1171,6 +1185,8 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
      loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
      loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE) >> 0;
      loRHE_hoplimit = tvb_get_guint8(tvb, offset+2);
+     IK 			= (loRH_flags & LOWPAN_5_RPI_BITS_IK) >> 8;
+
      if (tree) {
      	if (loRHE_class == LOWPAN_PATTERN_6LORHE){
      		condition = 1 ;
@@ -1187,13 +1203,42 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
      			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_f,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_F);
      			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_i,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_I);
      			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_k,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_K);
+     			proto_tree_add_uint        	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     			offset += 2;
+     			if (IK == 0){
+     				rpl_instance = tvb_get_guint8(tvb, offset);
+     				sender_rank2 = tvb_get_ntohs(tvb, offset + 1);
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset+1, 2, sender_rank2);	
+     				offset += 3;
+     			} 
+     			if (IK == 1){
+     				rpl_instance = tvb_get_guint8(tvb, offset);
+     				sender_rank1 = tvb_get_guint8(tvb, offset + 1);
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset+1, 1, sender_rank1);	
+     				offset += 2;
+     			}
+     			if (IK == 2){
+     				rpl_instance = 0x00;
+     				sender_rank2 = tvb_get_ntohs(tvb, offset);
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset, 2, sender_rank2);	
+     				offset += 2;
+     			}
+     			if (IK == 3){
+     				rpl_instance = 0x00;
+     				sender_rank1 = tvb_get_guint8(tvb, offset);
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset, 1, sender_rank1);
+     				offset +=1;		
+     			}
      		}
      		else{
      			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     			offset += 2 + loRHE_length;
      		}
-     		
-     		proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     		offset += 2 + loRHE_length;
      	}
      	else condition -= 1 ;	
      }
@@ -1203,9 +1248,9 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
      	if ((loRHE_class) != LOWPAN_PATTERN_6LORHC){
      		condition -= 1;
      	}
-     }
-	}  ;   
-    return tvb_new_subset_remaining(tvb, offset); 
+    }
+	}    
+    return tvb_new_subset_remaining(tvb, offset);
 }
 /*FUNCTION:------------------------------------------------------
  *  NAME
@@ -2779,14 +2824,23 @@ void
 proto_register_6lowpan(void)
 {
     static hf_register_info hf[] = {
+    	{ &hf_6lowpan_sender_rank1,
+    	  { "Sender Rank",               "6lowpan.sender.rank",
+            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+    	{ &hf_6lowpan_sender_rank2,
+    	  { "Sender Rank",               "6lowpan.sender.rank",
+            FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+    	{ &hf_6lowpan_rpl_instance,
+    	  { "RPL Instance",               "6lowpan.rpl.instance",
+            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
     	{ &hf_6lowpan_5_bit_o,
-          { "Context identifier extension",   "6lowpan.iphc.cid",
+          { "Packet direction: UP true, DOWN false",   "6lowpan.5.bitO",
             FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_O, NULL, HFILL }},
         { &hf_6lowpan_5_bit_r,
-          { "Context identifier extension",   "6lowpan.iphc.cid",
+          { "Error detected",   "6lowpan.5.bitR",
             FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_R, NULL, HFILL }},
         { &hf_6lowpan_5_bit_f,
-          { "Context identifier extension",   "6lowpan.iphc.cid",
+          { "No link to destination",   "6lowpan.5.bitF",
             FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_F, NULL, HFILL }},
         { &hf_6lowpan_5_bit_i,
           { "Context identifier extension",   "6lowpan.iphc.cid",
