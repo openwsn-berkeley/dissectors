@@ -233,6 +233,11 @@ static int hf_6lowpan_5_bit_k = -1;
 static int hf_6lowpan_sender_rank1 = -1;
 static int hf_6lowpan_sender_rank2 = -1;
 static int hf_6lowpan_rpl_instance = -1;
+static int hf_6lowpan_6lorhc_address_hop0 = -1;
+static int hf_6lowpan_6lorhc_address_hop2 = -1;
+static int hf_6lowpan_6lorhc_address_hop3 = -1;
+static int hf_6lowpan_6lorhc_address_hop4 = -1;
+static int hf_6lowpan_6lorhc_address_hop1 = -1;
 
 /*--------------------------------------*/
 static int proto_6lowpan = -1;
@@ -1153,8 +1158,9 @@ static tvbuff_t *
 dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dgram_size, const guint8 *siid, const guint8 *diid)
 {
 
+	ieee802154_hints_t  *hints;
+    guint16             hint_panid;
 	gint                offset = 0;
-	gint                length = 0;
 	gint 				IK;
 	guint16				loRH_flags;
 	proto_tree *        loRH_tree;
@@ -1166,9 +1172,16 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
 	guint16				sender_rank2;
 	guint8 				sender_rank1;
 	gint 				condition = 1;
-
-
+	gint 				nb_hops;
 	
+	struct ip6_hdr      ipv6;
+	
+    /* Lookup the IEEE 802.15.4 addressing hints. */
+    hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
+                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
+    hint_panid = (hints) ? (hints->src_pan) : (IEEE802154_BCAST_PAN);
+
+	memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
 	while(condition > 0){
 	condition -= 1 ;
 	/*Create the tree*/
@@ -1183,73 +1196,127 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
      loRH_flags	= tvb_get_ntohs(tvb, offset);
      loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
      loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
-     loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE) >> 0;
+     nb_hops		= loRHE_length;
+     loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
      loRHE_hoplimit = tvb_get_guint8(tvb, offset+2);
      IK 			= (loRH_flags & LOWPAN_5_RPI_BITS_IK) >> 8;
 
-     if (tree) {
-     	if (loRHE_class == LOWPAN_PATTERN_6LORHE){
-     		condition = 1 ;
-     		proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
-     		proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     		proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset+2, 1, loRHE_hoplimit);
-     		offset += 2 + loRHE_length;
-     	}
-     	else if (loRHE_class == LOWPAN_PATTERN_6LORHC){
-     		condition = 1 ;
-     		if (loRHE_type == 5){
-     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_o,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_O);	
-     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_r,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_R);
-     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_f,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_F);
-     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_i,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_I);
-     			proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_k,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_K);
-     			proto_tree_add_uint        	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     			offset += 2;
-     			if (IK == 0){
-     				rpl_instance = tvb_get_guint8(tvb, offset);
-     				sender_rank2 = tvb_get_ntohs(tvb, offset + 1);
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset+1, 2, sender_rank2);	
-     				offset += 3;
-     			} 
-     			if (IK == 1){
-     				rpl_instance = tvb_get_guint8(tvb, offset);
-     				sender_rank1 = tvb_get_guint8(tvb, offset + 1);
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset+1, 1, sender_rank1);	
-     				offset += 2;
-     			}
-     			if (IK == 2){
-     				rpl_instance = 0x00;
-     				sender_rank2 = tvb_get_ntohs(tvb, offset);
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset, 2, sender_rank2);	
-     				offset += 2;
-     			}
-     			if (IK == 3){
-     				rpl_instance = 0x00;
-     				sender_rank1 = tvb_get_guint8(tvb, offset);
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset, 1, sender_rank1);
-     				offset +=1;		
-     			}
-     		}
-     		else{
-     			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     	if (tree) {
+     		if (loRHE_class == LOWPAN_PATTERN_6LORHE){  /*Elective Routing Header*/
+     			condition = 1 ;
+     			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
      			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset+2, 1, loRHE_hoplimit);
      			offset += 2 + loRHE_length;
      		}
+     		else if (loRHE_class == LOWPAN_PATTERN_6LORHC){  /*Critical Routing Header*/
+     			condition = 1 ;
+     			if (loRHE_type == 5){
+     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_o,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_O);	
+     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_r,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_R);
+     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_f,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_F);
+     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_i,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_I);
+     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_k,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_K);
+     				proto_tree_add_uint        	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     				offset += 2;
+     				if (IK == 0){
+     					rpl_instance = tvb_get_guint8(tvb, offset);
+     					sender_rank2 = tvb_get_ntohs(tvb, offset + 1);
+     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
+     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset+1, 2, sender_rank2);	
+     					offset += 3;
+     				} 
+     				if (IK == 1){
+     					rpl_instance = tvb_get_guint8(tvb, offset);
+ 	    				sender_rank1 = tvb_get_guint8(tvb, offset + 1);
+    	 				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
+     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset+1, 1, sender_rank1);	
+     					offset += 2;
+     				}
+	     			if (IK == 2){
+	     				rpl_instance = 0x00;
+    	 				sender_rank2 = tvb_get_ntohs(tvb, offset);
+     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
+     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset, 2, sender_rank2);	
+     					offset += 2;
+     				}
+     				if (IK == 3){
+     					rpl_instance = 0x00;
+     					sender_rank1 = tvb_get_guint8(tvb, offset);
+     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
+     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset, 1, sender_rank1);
+     					offset +=1;		
+     				}
+     			}
+     			else if (loRHE_type <= 4){
+     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     				proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     				offset += 2 ;
+ 
+     				if (loRHE_type == 0){
+
+     					for (int i=0; i<nb_hops; i++) {
+     						for (int j = 0; j < 1; ++j){
+     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
+     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop0, tvb, offset, 1, &ipv6.ip6_src);
+     							offset +=1;
+     						}
+	        			}
+   		  			}
+   		  			else if (loRHE_type == 1){
+
+        	    		for (int i=0; i<nb_hops; i++) {
+     						for (int j = 0; j < 2; ++j){
+     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
+     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop1, tvb, offset, 2, &ipv6.ip6_src);
+        	    				offset +=2;
+        	    			}	
+        				}
+        			}
+     				else if (loRHE_type == 2){
+     				
+     					for (int i=0; i<nb_hops; i++) {
+     						for (int j = 0; j < 4; ++j){
+     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
+     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop2, tvb, offset, 4, &ipv6.ip6_src);
+           		 				offset +=4;
+           		 			}
+	        			}			
+    	 			}
+	     			else if (loRHE_type == 3){
+
+   		  				for (int i=0; i<nb_hops; i++) {
+     						for (int j = 0; j < 8; ++j){
+     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
+     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop3, tvb, offset, 8, &ipv6.ip6_src);
+       		     				offset +=8;
+       		     			}
+        				}
+     				
+     				}
+	     			else if (loRHE_type == 4){
+
+    	 				for (int i=0; i<nb_hops; i++) {
+     						for (int j = 0; j < 16; ++j){
+     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
+     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop4, tvb, offset, 16, &ipv6.ip6_src);
+     		       				offset +=16;
+     		       			}
+       		 			}
+     				}
+     			}	
+     		}
+     		else condition -= 1 ;	
      	}
-     	else condition -= 1 ;	
-     }
-     loRH_flags	= tvb_get_ntohs(tvb, offset);
-     loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
-     if ((loRHE_class) != LOWPAN_PATTERN_6LORHE){
-     	if ((loRHE_class) != LOWPAN_PATTERN_6LORHC){
-     		condition -= 1;
-     	}
-    }
-	}    
+     	loRH_flags	= tvb_get_ntohs(tvb, offset);
+     	loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
+     	
+     	if ((loRHE_class) != LOWPAN_PATTERN_6LORHE){
+    	 	if ((loRHE_class) != LOWPAN_PATTERN_6LORHC){
+     			condition -= 1;
+     		}
+    	}
+  	} 
     return tvb_new_subset_remaining(tvb, offset);
 }
 /*FUNCTION:------------------------------------------------------
@@ -2824,6 +2891,36 @@ void
 proto_register_6lowpan(void)
 {
     static hf_register_info hf[] = {
+    	{ &hf_6lowpan_6lorhc_address_hop0,
+          { "Source/15, Delta",                         "6lowpan.src",
+            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+    	{ &hf_6lowpan_6lorhc_address_hop1,
+          { "Source/14, Delta",                         "6lowpan.src",
+            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+        { &hf_6lowpan_6lorhc_address_hop2,
+          { "Source/12, Delta",                         "6lowpan.src",
+            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+        { &hf_6lowpan_6lorhc_address_hop3,
+          { "Source/8, Delta",                         "6lowpan.src",
+            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+        { &hf_6lowpan_6lorhc_address_hop4,
+          { "Source/0 Delta",                         "6lowpan.src",
+            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},            
+    	/*{ &hf_6lowpan_6lorhc_address4,
+    	  { "Hop ",               "6lowpan.hop",
+            FT_UINT128, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+    	{ &hf_6lowpan_6lorhc_address3,
+    	  { "Hop ",               "6lowpan.hop",
+            FT_UINT64, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+    	{ &hf_6lowpan_6lorhc_address2,
+    	  { "Hop ",               "6lowpan.hop",
+            FT_UINT32, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+    	{ &hf_6lowpan_6lorhc_address1,
+    	  { "Hop ",               "6lowpan.hop",
+            FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+    	{ &hf_6lowpan_6lorhc_address0,
+    	  { "Hop ",               "6lowpan.hop",
+            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},*/
     	{ &hf_6lowpan_sender_rank1,
     	  { "Sender Rank",               "6lowpan.sender.rank",
             FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
@@ -2855,7 +2952,7 @@ proto_register_6lowpan(void)
     	  { "6loRH Type",               "6lowpan.rhtype",
             FT_UINT16, BASE_HEX, VALS(lowpan_patterns_rh_type), LOWPAN_PATTERN_6LORHE_TYPE, NULL, HFILL }},
     	{ &hf_6lowpan_6lorhc_size,
-    	  { "6loRH Critical size",               "6lowpan.rhCsize",
+    	  { "6loRH Hop Number",               "6lowpan.HopNuevo",
             FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
     	{ &hf_6lowpan_6lorhe_size,
     	  { "6loRH Elective size",               "6lowpan.rhEsize",
