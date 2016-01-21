@@ -556,7 +556,7 @@ static tvbuff_t *   dissect_6lowpan_mesh        (tvbuff_t *tvb, packet_info *pin
 static tvbuff_t *   dissect_6lowpan_frag_first  (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, const guint8 *siid, const guint8 *diid);
 static tvbuff_t *   dissect_6lowpan_frag_middle (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 static void         dissect_6lowpan_unknown     (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
-static tvbuff_t * 	dissect_6lowpan_6loRH 		(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dgram_size , const guint8 *siid, const guint8 *diid);
+static tvbuff_t * 	dissect_6lowpan_6loRH 		(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gint dgram_size , const guint8 *siid, const guint8 *diid*/);
 
 /* Helper functions. */
 static gboolean     lowpan_dlsrc_to_ifcid   (packet_info *pinfo, guint8 *ifcid);
@@ -1099,20 +1099,21 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPV6_BITS) == LOWPAN_PATTERN_IPV6) {
         next = dissect_6lowpan_ipv6(next, pinfo, lowpan_tree);
     }
-    /* Jonathan messing around - 6loRH*/
+    /* 6loRH*/
 
-    else if (tvb_get_bits8(next, 0, 4) == 0b1111) {
+    else if (tvb_get_bits8(next, 0, 4) == 0xf) {
     	if (tree) {
-        proto_tree_add_bits_item(lowpan_tree, hf_6lowpan_pagenb, tvb, 4, 4, 0);
+        	proto_tree_add_bits_item(lowpan_tree, hf_6lowpan_pagenb, tvb, 4, 4, 0);
     	}
+
     	next = tvb_new_subset_remaining(tvb, 1);
-    	next = dissect_6lowpan_6loRH(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
+    	next = dissect_6lowpan_6loRH(next, pinfo, lowpan_tree/*, -1, src_iid, dst_iid*/);
     	if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPHC_BITS) == LOWPAN_PATTERN_IPHC) {
         	next = dissect_6lowpan_iphc(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
+        }
         if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_HC1_BITS) == LOWPAN_PATTERN_HC1) {
-        next = dissect_6lowpan_hc1(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
-   	} 
-	}
+        	next = dissect_6lowpan_hc1(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
+		}
 	}
     /*--------------------------------------------------------------------------------------------------*/
     /* Compressed IPv6 packets. */
@@ -1155,11 +1156,11 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
  */
 
 static tvbuff_t *
-dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dgram_size, const guint8 *siid, const guint8 *diid)
+dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gint dgram_size, const guint8 *siid, const guint8 *diid*/)
 {
 
-	ieee802154_hints_t  *hints;
-    guint16             hint_panid;
+/*	ieee802154_hints_t  *hints;
+    guint16             hint_panid;*/
 	gint                offset = 0;
 	gint 				IK;
 	guint16				loRH_flags;
@@ -1177,9 +1178,9 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
 	struct ip6_hdr      ipv6;
 	
     /* Lookup the IEEE 802.15.4 addressing hints. */
-    hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
-                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
-    hint_panid = (hints) ? (hints->src_pan) : (IEEE802154_BCAST_PAN);
+  /*  hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
+                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);*/
+  /*  hint_panid = (hints) ? (hints->src_pan) : (IEEE802154_BCAST_PAN);*/
 
 	memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
 	while(condition > 0){
@@ -1249,6 +1250,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint 
      				}
      			}
      			else if (loRHE_type <= 4){
+     				memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
      				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
      				proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
      				offset += 2 ;
@@ -2906,21 +2908,6 @@ proto_register_6lowpan(void)
         { &hf_6lowpan_6lorhc_address_hop4,
           { "Source/0 Delta",                         "6lowpan.src",
             FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},            
-    	/*{ &hf_6lowpan_6lorhc_address4,
-    	  { "Hop ",               "6lowpan.hop",
-            FT_UINT128, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhc_address3,
-    	  { "Hop ",               "6lowpan.hop",
-            FT_UINT64, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhc_address2,
-    	  { "Hop ",               "6lowpan.hop",
-            FT_UINT32, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhc_address1,
-    	  { "Hop ",               "6lowpan.hop",
-            FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhc_address0,
-    	  { "Hop ",               "6lowpan.hop",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},*/
     	{ &hf_6lowpan_sender_rank1,
     	  { "Sender Rank",               "6lowpan.sender.rank",
             FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
