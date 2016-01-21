@@ -1,11 +1,12 @@
-# 6TiSCH/IEEE802.15.4e Wireshark dissectors
+# 6TiSCH/IEEE802.15.4e  and 6LoWPAN Wireshark dissectors
 
-Note: developed for Wireshark 1.99.7
+Note: developed for Wireshark 1.99.7 for the IEEE802.15.4e and for Wireshark 2.0.0 for 6LoWPAN
 
 These dissectors extend the Wireshark IEEE802.15.4 dissectors with the following:
 * dissect the IEEE802.15.4 FCF for "version 2" frames (new in IEEE802.15.4e-2012)
 * dissect all Information Elements used in draft-6tisch-minimal
 * dissect IP-in-IP encapsulation
+* dissect the 6lo Paging and Routing Dispatch in 6LoWPAN
 
 The source code of those dissectors is available as open-source code (BSD license). Although we are making final adjustments, you can use the code today. For now, you have to recompile Wireshark (instructions below); we will work on submitting this code to the Wireshark project once we are finished.
 
@@ -15,11 +16,10 @@ Clone this repo in your Wireshark source code so you can push/pull changes and e
 
 * download the "Development Release" source code from https://www.wireshark.org/download.html
 * unzip
-* rename `wireshark-1.XX.X\epan\dissectors\` top `wireshark-1.XX.X\epan\dissectors_old\`
-* clone the repo in `wireshark-1.XX.X\epan\` and rename the clone to `dissectors\`
+* rename `wireshark-2.XX.X\epan\dissectors\` top `wireshark-2.XX.X\epan\dissectors_old\`
+* clone the repo in `wireshark-2.XX.X\epan\` and rename the clone to `dissectors\`
 * move all the contents of `wireshark-1.XX.X\epan\dissectors_old\` into `wireshark-1.XX.X\epan\dissectors\`
-* The `.gitignore` is set up in such a way that you will not commit any code other than the IEEE802.15.4 dissector
-
+* The `.gitignore` is set up in such a way that you will not commit any code other than the IEEE802.15.4 and 6LoWPAN dissectors
 # compiling
 
 ## on Windows

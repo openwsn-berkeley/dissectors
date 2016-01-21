@@ -2952,7 +2952,7 @@ proto_register_6lowpan(void)
     	  { "6loRH Type",               "6lowpan.rhtype",
             FT_UINT16, BASE_HEX, VALS(lowpan_patterns_rh_type), LOWPAN_PATTERN_6LORHE_TYPE, NULL, HFILL }},
     	{ &hf_6lowpan_6lorhc_size,
-    	  { "6loRH Hop Number",               "6lowpan.HopNuevo",
+    	  { "6loRH Hop Number - 1",               "6lowpan.HopNuevo",
             FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
     	{ &hf_6lowpan_6lorhe_size,
     	  { "6loRH Elective size",               "6lowpan.rhEsize",
