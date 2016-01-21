@@ -19,10 +19,9 @@ Clone this repo in your Wireshark source code so you can push/pull changes and e
 * rename `wireshark-2.XX.X\epan\dissectors\` top `wireshark-2.XX.X\epan\dissectors_old\`
 * clone the repo in `wireshark-2.XX.X\epan\` and rename the clone to `dissectors\`
 * move all the contents of `wireshark-2.XX.X\epan\dissectors_old\` into `wireshark-2.XX.X\epan\dissectors\`
-* The `.gitignore` is set up in such a way that you will not commit any code other than the IEEE802.15.4 and 6LoWPAN dissectors
-# compiling
+* The `.gitignore` is set up in such a way that you will not commit any code other than the IEEE802.15.4 and 6LoWPAN dissectors 
 
-## on Windows
+## compilingon Windows
 
 Follow https://www.wireshark.org/docs/wsdg_html_chunked/ChSetupWin32.html to install the toolchain.
 
