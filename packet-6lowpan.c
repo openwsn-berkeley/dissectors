@@ -1183,6 +1183,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
   /*  hint_panid = (hints) ? (hints->src_pan) : (IEEE802154_BCAST_PAN);*/
 
 	memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
+
 	while(condition > 0){
 	condition -= 1 ;
 	/*Create the tree*/
@@ -1197,7 +1198,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
      loRH_flags	= tvb_get_ntohs(tvb, offset);
      loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
      loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
-     nb_hops		= loRHE_length;
+     nb_hops		= loRHE_length + 1;
      loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
      loRHE_hoplimit = tvb_get_guint8(tvb, offset+2);
      IK 			= (loRH_flags & LOWPAN_5_RPI_BITS_IK) >> 8;
@@ -1260,39 +1261,42 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
      					for (int i=0; i<nb_hops; i++) {
      						for (int j = 0; j < 1; ++j){
      							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
-     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop0, tvb, offset, 1, &ipv6.ip6_src);
-     							offset +=1;
      						}
+     						proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop0, tvb, offset-1, 1, &ipv6.ip6_src);
+     						offset +=1;
 	        			}
    		  			}
    		  			else if (loRHE_type == 1){
 
         	    		for (int i=0; i<nb_hops; i++) {
      						for (int j = 0; j < 2; ++j){
-     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
-     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop1, tvb, offset, 2, &ipv6.ip6_src);
-        	    				offset +=2;
-        	    			}	
+     							ipv6.ip6_src.bytes[15-1+j] = tvb_get_guint8(tvb, offset);
+        	    				offset +=1;
+        	    			}
+     						proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop1, tvb, offset-2, 2, &ipv6.ip6_src);
+        	    			/*offset +=2;*/        	    				
         				}
         			}
      				else if (loRHE_type == 2){
      				
      					for (int i=0; i<nb_hops; i++) {
      						for (int j = 0; j < 4; ++j){
-     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
-     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop2, tvb, offset, 4, &ipv6.ip6_src);
-           		 				offset +=4;
-           		 			}
+     							ipv6.ip6_src.bytes[15-3+j] = tvb_get_guint8(tvb, offset);
+     							offset +=1;
+     						}
+     						proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop2, tvb, offset-4, 4, &ipv6.ip6_src);
+           		 			/*offset +=4;*/
 	        			}			
     	 			}
 	     			else if (loRHE_type == 3){
-
+	     				 
    		  				for (int i=0; i<nb_hops; i++) {
      						for (int j = 0; j < 8; ++j){
-     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
-     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop3, tvb, offset, 8, &ipv6.ip6_src);
-       		     				offset +=8;
+     							ipv6.ip6_src.bytes[15-7+j] = tvb_get_guint8(tvb, offset);
+     							offset +=1;
        		     			}
+       		     			proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop3, tvb, offset-8, 8, &ipv6.ip6_src);
+       		     			/*offset +=8;*/
         				}
      				
      				}
@@ -1300,10 +1304,11 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
 
     	 				for (int i=0; i<nb_hops; i++) {
      						for (int j = 0; j < 16; ++j){
-     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
-     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop4, tvb, offset, 16, &ipv6.ip6_src);
-     		       				offset +=16;
+     							ipv6.ip6_src.bytes[j] = tvb_get_guint8(tvb, offset);
+     							offset +=1;
      		       			}
+     		       			proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop4, tvb, offset-16, 16, &ipv6.ip6_src);
+     		       			/*offset +=16;*/
        		 			}
      				}
      			}	
