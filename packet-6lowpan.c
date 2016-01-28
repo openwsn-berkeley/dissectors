@@ -1030,7 +1030,7 @@ dissect_6lowpan_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *
             continue;
         }
         if (tvb_get_bits8(tvb, offset*8, LOWPAN_PATTERN_FRAG_BITS) == LOWPAN_PATTERN_FRAGN) break;
-        if (tvb_get_bits8(tvb, offset*4, 4) == 0b1111) break; /*6loRH*/
+        if (tvb_get_bits8(tvb, offset*4, 4) == 0xf) break; /*6loRH*/
 
         /* If we get here, then we couldn't match to any pattern. */
         return FALSE;
