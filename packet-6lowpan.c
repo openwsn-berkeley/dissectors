@@ -2923,7 +2923,7 @@ proto_register_6lowpan(void)
     	  { "RPL Instance",               "6lowpan.rpl.instance",
             FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
     	{ &hf_6lowpan_5_bit_o,
-          { "Packet direction: UP true, DOWN false",   "6lowpan.5.bitO",
+          { "Packet direction: UP false, DOWN true",   "6lowpan.5.bitO",
             FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_O, NULL, HFILL }},
         { &hf_6lowpan_5_bit_r,
           { "Error detected",   "6lowpan.5.bitR",
