@@ -193,7 +193,9 @@
 /* Payload Information Elements' list */ /* according to 2015 spec. */
 #define IEEE802154_P_IE_ESDU                          0x00
 #define IEEE802154_P_IE_MLME                          0x01
-#define IEEE802154_P_IE_VENDOR_SPECIFIC               0x02
+
+ /*For the Plugtest - Paris 2016, the VENDOR SPECIFIC Payload IE changes its name to 6top group ID */
+#define IEEE802154_P_IE_6TOPGROUPID                   0x02
 #define IEEE802154_P_IE_PAYLOAD_TERM                  0x0F
 
 /* MLME IE Short Sub-list */
@@ -254,6 +256,23 @@
 #define IEEE802154_P_MLME_LONG_LENGTH               0x07FF
 #define IEEE802154_P_MLME_LONG_ID                   0x7800
 
+/*SIXTOP Bit-mask*/
+#define SIXP_VERSION                               0x0F  
+#define SIXP_CODE                                  0xF0  
+#define SIXP_SFID                                  0xFF   
+
+/* SIXTOP CMD and RC identifiers */
+#define SIXTOP_CMD_ADD                              0x1
+#define SIXTOP_CMD_DELETE                           0x2
+#define SIXTOP_CMD_COUNT                            0x3
+#define SIXTOP_CMD_LIST                             0x4
+#define SIXTOP_CMD_CLEAR                            0x5
+#define SIXTOP_RC_SUCCESS                           0x6
+#define SIXTOP_RC_VER_ERR                           0x7
+#define SIXTOP_RC_SFID_ERR                          0x8
+#define SIXTOP_RC_BUSY                              0x9
+#define SIXTOP_RC_RESET                             0xA
+#define SIXTOP_RC_ERR                               0xB
 
 typedef enum {
     SECURITY_LEVEL_NONE = 0x00,

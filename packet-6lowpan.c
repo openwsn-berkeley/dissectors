@@ -221,7 +221,7 @@ void proto_reg_handoff_6lowpan(void);
 /* Jonathan */
 static int hf_6lowpan_pagenb = -1;
 static int hf_6lowpan_routing_header = -1;
-static int hf_6lowpan_6lorhe_size = -1;
+static int hf_6lowpan_6lorhe_length = -1;
 static int hf_6lowpan_6lorhc_size = -1;
 static int hf_6lowpan_6lorhe_type = -1;
 static int hf_6lowpan_6lorhe_hoplimit = -1;
@@ -238,6 +238,7 @@ static int hf_6lowpan_6lorhc_address_hop2 = -1;
 static int hf_6lowpan_6lorhc_address_hop3 = -1;
 static int hf_6lowpan_6lorhc_address_hop4 = -1;
 static int hf_6lowpan_6lorhc_address_hop1 = -1;
+static int hf_6lowpan_6lorhc_address_src = -1;
 
 /*--------------------------------------*/
 static int proto_6lowpan = -1;
@@ -1206,9 +1207,15 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
      	if (tree) {
      		if (loRHE_class == LOWPAN_PATTERN_6LORHE){  /*Elective Routing Header*/
      			condition = 1 ;
-     			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     			memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
+     			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_length, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
      			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
      			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset+2, 1, loRHE_hoplimit);
+
+     			for (int i = 0; i < 16; ++i){
+     				ipv6.ip6_src.bytes[i] = tvb_get_guint8(tvb, offset + 3 + i);	
+     			}
+     			proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);
      			offset += 2 + loRHE_length;
      		}
      		else if (loRHE_class == LOWPAN_PATTERN_6LORHC){  /*Critical Routing Header*/
@@ -1259,7 +1266,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
      				if (loRHE_type == 0){
 
      					for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 1; ++j){
+     						for (int j = 0; j < 1; j++){
      							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
      						}
      						proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop0, tvb, offset-1, 1, &ipv6.ip6_src);
@@ -1280,7 +1287,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
      				else if (loRHE_type == 2){
      				
      					for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 4; ++j){
+     						for (int j = 0; j < 4; j++){
      							ipv6.ip6_src.bytes[15-3+j] = tvb_get_guint8(tvb, offset);
      							offset +=1;
      						}
@@ -1291,7 +1298,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
 	     			else if (loRHE_type == 3){
 	     				 
    		  				for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 8; ++j){
+     						for (int j = 0; j < 8; j++){
      							ipv6.ip6_src.bytes[15-7+j] = tvb_get_guint8(tvb, offset);
      							offset +=1;
        		     			}
@@ -1303,7 +1310,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
 	     			else if (loRHE_type == 4){
 
     	 				for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 16; ++j){
+     						for (int j = 0; j < 16; j++){
      							ipv6.ip6_src.bytes[j] = tvb_get_guint8(tvb, offset);
      							offset +=1;
      		       			}
@@ -2898,6 +2905,10 @@ void
 proto_register_6lowpan(void)
 {
     static hf_register_info hf[] = {
+    	
+    	{ &hf_6lowpan_6lorhc_address_src,
+          { "Encapsulator Address",                         "6lowpan.src",
+            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }}, 
     	{ &hf_6lowpan_6lorhc_address_hop0,
           { "Source/15, Delta",                         "6lowpan.src",
             FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
@@ -2946,9 +2957,9 @@ proto_register_6lowpan(void)
     	{ &hf_6lowpan_6lorhc_size,
     	  { "6loRH Hop Number - 1",               "6lowpan.HopNuevo",
             FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhe_size,
-    	  { "6loRH Elective size",               "6lowpan.rhEsize",
-            FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
+    	{ &hf_6lowpan_6lorhe_length,
+    	  { "6loRH Elective Length",               "6lowpan.rhElength",
+            FT_UINT16, BASE_DEC, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
     	{ &hf_6lowpan_routing_header,
     	  { "Routing Header 6lo",               "6lowpan.routingheader",
             FT_UINT8, BASE_HEX, VALS(lowpan_patterns_rh), 0x0, NULL, HFILL }},
