@@ -262,17 +262,17 @@
 #define SIXP_SFID                                  0xFF   
 
 /* SIXTOP CMD and RC identifiers */
-#define SIXTOP_CMD_ADD                              0x1
-#define SIXTOP_CMD_DELETE                           0x2
-#define SIXTOP_CMD_COUNT                            0x3
-#define SIXTOP_CMD_LIST                             0x4
-#define SIXTOP_CMD_CLEAR                            0x5
-#define SIXTOP_RC_SUCCESS                           0x6
-#define SIXTOP_RC_VER_ERR                           0x7
-#define SIXTOP_RC_SFID_ERR                          0x8
-#define SIXTOP_RC_BUSY                              0x9
-#define SIXTOP_RC_RESET                             0xA
-#define SIXTOP_RC_ERR                               0xB
+#define SIXTOP_CMD_ADD                              0x01
+#define SIXTOP_CMD_DELETE                           0x02
+#define SIXTOP_CMD_COUNT                            0x03
+#define SIXTOP_CMD_LIST                             0x04
+#define SIXTOP_CMD_CLEAR                            0x05
+#define SIXTOP_RC_SUCCESS                           0x06
+#define SIXTOP_RC_VER_ERR                           0x07
+#define SIXTOP_RC_SFID_ERR                          0x08
+#define SIXTOP_RC_BUSY                              0x09 
+#define SIXTOP_RC_RESET                             0x0A
+#define SIXTOP_RC_ERR                               0x0B
 
 typedef enum {
     SECURITY_LEVEL_NONE = 0x00,

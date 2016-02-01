@@ -350,13 +350,13 @@ static dissector_handle_t       ipv6_handle;
 /* Value Strings */
 
 static const value_string lowpan_patterns_rh_type [] = {
-	{ LOWPAN_PATTERN_6LORH_TYPE0,        "0" },
-    { LOWPAN_PATTERN_6LORH_TYPE1,        "1" },
-    { LOWPAN_PATTERN_6LORH_TYPE2,        "2" },
-    { LOWPAN_PATTERN_6LORH_TYPE3,        "3" },
-    { LOWPAN_PATTERN_6LORH_TYPE4,        "4" },
-	{ LOWPAN_PATTERN_6LORH_TYPE5,        "5" },
-	{ LOWPAN_PATTERN_6LORH_TYPE6,        "6" },
+	{ LOWPAN_PATTERN_6LORH_TYPE0,        "Routing Header 3, 1 byte compression" },
+    { LOWPAN_PATTERN_6LORH_TYPE1,        "Routing Header 3, 2 byte compression" },
+    { LOWPAN_PATTERN_6LORH_TYPE2,        "Routing Header 3, 4 byte compression" },
+    { LOWPAN_PATTERN_6LORH_TYPE3,        "Routing Header 3, 8 byte compression" },
+    { LOWPAN_PATTERN_6LORH_TYPE4,        "Routing Header 3, 16 byte compression" },
+	{ LOWPAN_PATTERN_6LORH_TYPE5,        "Routing Protocol Information" },
+	{ LOWPAN_PATTERN_6LORH_TYPE6,        "IP in IP" },
     { 0, NULL }
 };
 static const value_string lowpan_patterns_rh [] = {
@@ -1162,6 +1162,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
 
 /*	ieee802154_hints_t  *hints;
     guint16             hint_panid;*/
+    guint16				check;
 	gint                offset = 0;
 	gint 				IK;
 	guint16				loRH_flags;
@@ -1182,156 +1183,166 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gin
   /*  hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
                 proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);*/
   /*  hint_panid = (hints) ? (hints->src_pan) : (IEEE802154_BCAST_PAN);*/
+	loRH_flags	= tvb_get_ntohs(tvb, offset);
+	check 		= loRH_flags & 0xC000;
+	
+	if (check == 0x8000) {
 
-	memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
+		memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
 
-	while(condition > 0){
-	condition -= 1 ;
-	/*Create the tree*/
-	loRH_tree = proto_tree_add_subtree(tree, tvb, offset, 2, ett_lowpan_routing_header_dispatch, NULL, "6LoWPAN Routing Header Dispatch");
-	/* Get and display the pattern. */
-    proto_tree_add_bits_item(loRH_tree, hf_6lowpan_routing_header, tvb, 8*offset, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);
-    /*proto_tree_add_bits_item(iphc_tree, hf_6lowpan_pattern, tvb, 0, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);*/
-    /*=====================================================
-     * Parse IPHC Header flags.
-     *=====================================================
-     */
-     loRH_flags	= tvb_get_ntohs(tvb, offset);
-     loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
-     loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
-     nb_hops		= loRHE_length + 1;
-     loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     loRHE_hoplimit = tvb_get_guint8(tvb, offset+2);
-     IK 			= (loRH_flags & LOWPAN_5_RPI_BITS_IK) >> 8;
+		while(condition > 0){
+		condition -= 1 ;
+		/*Create the tree*/
+		loRH_tree = proto_tree_add_subtree(tree, tvb, offset, 2, ett_lowpan_routing_header_dispatch, NULL, "6LoRH:");
 
-     	if (tree) {
-     		if (loRHE_class == LOWPAN_PATTERN_6LORHE){  /*Elective Routing Header*/
-     			condition = 1 ;
-     			memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
-     			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_length, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
-     			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset+2, 1, loRHE_hoplimit);
+		/* Get and display the pattern. */
+    	proto_tree_add_bits_item(loRH_tree, hf_6lowpan_routing_header, tvb, 8*offset, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);
+    	/*proto_tree_add_bits_item(iphc_tree, hf_6lowpan_pattern, tvb, 0, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);*/
+    	/*=====================================================
+     	* Parse IPHC Header flags.
+     	*=====================================================
+    	 */
+     
+    	loRHE_class		= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
+     	loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
+     	nb_hops			= loRHE_length + 1;
+     	loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     	loRHE_hoplimit 	= tvb_get_guint8(tvb, offset+2);
+     	IK 				= (loRH_flags & LOWPAN_5_RPI_BITS_IK) >> 8;
 
-     			for (int i = 0; i < 16; ++i){
-     				ipv6.ip6_src.bytes[i] = tvb_get_guint8(tvb, offset + 3 + i);	
-     			}
-     			proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);
-     			offset += 2 + loRHE_length;
-     		}
-     		else if (loRHE_class == LOWPAN_PATTERN_6LORHC){  /*Critical Routing Header*/
-     			condition = 1 ;
-     			if (loRHE_type == 5){
-     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_o,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_O);	
-     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_r,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_R);
-     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_f,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_F);
-     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_i,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_I);
-     				proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_k,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_K);
-     				proto_tree_add_uint        	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     				offset += 2;
-     				if (IK == 0){
-     					rpl_instance = tvb_get_guint8(tvb, offset);
-     					sender_rank2 = tvb_get_ntohs(tvb, offset + 1);
-     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
-     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset+1, 2, sender_rank2);	
-     					offset += 3;
-     				} 
-     				if (IK == 1){
-     					rpl_instance = tvb_get_guint8(tvb, offset);
- 	    				sender_rank1 = tvb_get_guint8(tvb, offset + 1);
-    	 				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
-     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset+1, 1, sender_rank1);	
-     					offset += 2;
-     				}
-	     			if (IK == 2){
-	     				rpl_instance = 0x00;
-    	 				sender_rank2 = tvb_get_ntohs(tvb, offset);
-     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
-     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset, 2, sender_rank2);	
-     					offset += 2;
-     				}
-     				if (IK == 3){
-     					rpl_instance = 0x00;
-     					sender_rank1 = tvb_get_guint8(tvb, offset);
-     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
-     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset, 1, sender_rank1);
-     					offset +=1;		
-     				}
-     			}
-     			else if (loRHE_type <= 4){
+     	proto_item_append_text(loRH_tree, " %s", val_to_str_const(loRHE_type, lowpan_patterns_rh_type, "Unknown"));
+
+     
+
+     		if (tree) {
+     			if (loRHE_class == LOWPAN_PATTERN_6LORHE){  /*Elective Routing Header*/
+     				condition = 1 ;
      				memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
-     				proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
-     				proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     				offset += 2 ;
- 
-     				if (loRHE_type == 0){
+	     			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_length, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+    	 			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     				proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset+2, 1, loRHE_hoplimit);
 
-     					for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 1; j++){
-     							ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
-     						}
-     						proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop0, tvb, offset-1, 1, &ipv6.ip6_src);
-     						offset +=1;
-	        			}
-   		  			}
-   		  			else if (loRHE_type == 1){
+   		  			for (int i = 0; i < 16; ++i){
+     					ipv6.ip6_src.bytes[i] = tvb_get_guint8(tvb, offset + 3 + i);	
+     				}
+     				proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);
+     				offset += 2 + loRHE_length;
+     			}
+     			else if (loRHE_class == LOWPAN_PATTERN_6LORHC){  /*Critical Routing Header*/
+     				condition = 1 ;
+     				if (loRHE_type == 5){
+     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_o,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_O);	
+     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_r,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_R);
+     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_f,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_F);
+     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_i,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_I);
+     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_k,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_K);
+     					proto_tree_add_uint        	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     					offset += 2;
+     					if (IK == 0){
+	     					rpl_instance = tvb_get_guint8(tvb, offset);
+    	 					sender_rank2 = tvb_get_ntohs(tvb, offset + 1);
+     						proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
+     						proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset+1, 2, sender_rank2);	
+     						offset += 3;
+     					} 
+     					if (IK == 1){
+     						rpl_instance = tvb_get_guint8(tvb, offset);
+ 	    					sender_rank1 = tvb_get_guint8(tvb, offset + 1);
+    	 					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
+    	 					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset+1, 1, sender_rank1);	
+    	 					offset += 2;
+    	 				}
+		     			if (IK == 2){
+		     				rpl_instance = 0x00;
+    		 				sender_rank2 = tvb_get_ntohs(tvb, offset);
+    	 					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
+    	 					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset, 2, sender_rank2);	
+    	 					offset += 2;
+    	 				}
+    	 				if (IK == 3){
+    	 					rpl_instance = 0x00;
+     						sender_rank1 = tvb_get_guint8(tvb, offset);
+     						proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
+     						proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset, 1, sender_rank1);
+     						offset +=1;		
+     					}
+     				}
+     				else if (loRHE_type <= 4){
+     					memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
+     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+     					proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+     					offset += 2 ;
+	 
+    	 				if (loRHE_type == 0){
 
-        	    		for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 2; ++j){
-     							ipv6.ip6_src.bytes[15-1+j] = tvb_get_guint8(tvb, offset);
-        	    				offset +=1;
-        	    			}
-     						proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop1, tvb, offset-2, 2, &ipv6.ip6_src);
-        	    			/*offset +=2;*/        	    				
-        				}
-        			}
-     				else if (loRHE_type == 2){
-     				
-     					for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 4; j++){
-     							ipv6.ip6_src.bytes[15-3+j] = tvb_get_guint8(tvb, offset);
+	     					for (int i=0; i<nb_hops; i++) {
+   		  						for (int j = 0; j < 1; j++){
+     								ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
+     							}
+     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop0, tvb, offset, 1, &ipv6.ip6_src);
      							offset +=1;
-     						}
-     						proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop2, tvb, offset-4, 4, &ipv6.ip6_src);
-           		 			/*offset +=4;*/
-	        			}			
-    	 			}
-	     			else if (loRHE_type == 3){
+	 		       			}
+   			  			}
+   			  			else if (loRHE_type == 1){
+
+     		   	    		for (int i=0; i<nb_hops; i++) {
+     							for (int j = 0; j < 2; ++j){
+    	 							ipv6.ip6_src.bytes[15-1+j] = tvb_get_guint8(tvb, offset);
+       		 	    				offset +=1;
+        		    			}
+     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop1, tvb, offset - 2, 2, &ipv6.ip6_src);
+        		    			/*offset +=2;*/        	    				
+       		 				}
+        				}
+     					else if (loRHE_type == 2){
+     				
+     						for (int i=0; i<nb_hops; i++) {
+     							for (int j = 0; j < 4; j++){
+     								ipv6.ip6_src.bytes[15-3+j] = tvb_get_guint8(tvb, offset);
+     								offset +=1;
+     							}
+     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop2, tvb, offset - 4, 4, &ipv6.ip6_src);
+     	      		 			/*offset +=4;*/
+	 		       			}			
+    		 			}
+	   		  			else if (loRHE_type == 3){
 	     				 
-   		  				for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 8; j++){
-     							ipv6.ip6_src.bytes[15-7+j] = tvb_get_guint8(tvb, offset);
-     							offset +=1;
-       		     			}
-       		     			proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop3, tvb, offset-8, 8, &ipv6.ip6_src);
-       		     			/*offset +=8;*/
-        				}
+   			  				for (int i=0; i<nb_hops; i++) {
+     							for (int j = 0; j < 8; j++){
+     								ipv6.ip6_src.bytes[15-7+j] = tvb_get_guint8(tvb, offset);
+     								offset +=1;
+       			     			}
+       			     			proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop3, tvb, offset - 8, 8, &ipv6.ip6_src);
+       			     			/*offset +=8;*/
+        					}
      				
-     				}
-	     			else if (loRHE_type == 4){
+     					}
+	     				else if (loRHE_type == 4){
 
-    	 				for (int i=0; i<nb_hops; i++) {
-     						for (int j = 0; j < 16; j++){
-     							ipv6.ip6_src.bytes[j] = tvb_get_guint8(tvb, offset);
-     							offset +=1;
-     		       			}
-     		       			proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop4, tvb, offset-16, 16, &ipv6.ip6_src);
-     		       			/*offset +=16;*/
-       		 			}
-     				}
-     			}	
-     		}
-     		else condition -= 1 ;	
-     	}
-     	loRH_flags	= tvb_get_ntohs(tvb, offset);
-     	loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
-     	
-     	if ((loRHE_class) != LOWPAN_PATTERN_6LORHE){
-    	 	if ((loRHE_class) != LOWPAN_PATTERN_6LORHC){
-     			condition -= 1;
-     		}
-    	}
-  	} 
-    return tvb_new_subset_remaining(tvb, offset);
+	    	 				for (int i=0; i<nb_hops; i++) {
+	     						for (int j = 0; j < 16; j++){
+	     							ipv6.ip6_src.bytes[j] = tvb_get_guint8(tvb, offset);
+	     							offset +=1;
+	     		       			}
+	     		       			proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop4, tvb, offset - 16, 16, &ipv6.ip6_src);
+	     		       			/*offset +=16;*/
+	       		 			}
+	     				}
+	     			}	
+	     		}
+	     		else condition -= 1 ;	
+	     	}
+	     	loRH_flags	= tvb_get_ntohs(tvb, offset);
+	     	loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
+	     	
+    	 	if ((loRHE_class) != LOWPAN_PATTERN_6LORHE){
+    		 	if ((loRHE_class) != LOWPAN_PATTERN_6LORHC){
+     				condition -= 1;
+     			}
+    		}
+  		} 
+   	} 
+    	return tvb_new_subset_remaining(tvb, offset);
 }
 /*FUNCTION:------------------------------------------------------
  *  NAME

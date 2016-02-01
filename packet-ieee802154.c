@@ -367,6 +367,11 @@ static int hf_ieee802154_p_ie_sixp_code = -1;
 static int hf_ieee802154_p_ie_sixp_sfid = -1;
 static int hf_ieee802154_p_ie_sixp_subid = -1;
 
+static int hf_ieee802154_p_ie_sixp_ncells = -1;
+static int hf_ieee802154_p_ie_sixp_container = -1;
+static int hf_ieee802154_p_ie_sixp_slotoffset = -1;
+static int hf_ieee802154_p_ie_sixp_choffset = -1;
+static int hf_ieee802154_p_ie_sixp_cells_sched = -1;
 
 /*
  * Dissector handles
@@ -538,6 +543,21 @@ static const value_string ieee802154_h_mlme_sub_short_information_elements_defin
     //{ IEEE802154_P_IE_TIMESTAMP_DIFF_SH, "Timestamp Difference IE"},
     //{ IEEE802154_P_IE_TMCP_SPECIFICATION_SH, "TMCTP Specification IE" },
    //{ IEEE802154_P_IE_RCC_PHY_OPER_MODE_SH, "RCC PHY Operating Mode IE" },
+    { 0, NULL }
+};
+
+static const value_string ieee802154_sixtop_commands_responses[] = {
+    { SIXTOP_CMD_ADD, "Add Command" },
+    { SIXTOP_CMD_DELETE, "Delete Command" },
+    { SIXTOP_CMD_COUNT, "Count Command" },
+    { SIXTOP_CMD_LIST, "List Command" },
+    { SIXTOP_CMD_CLEAR, "Clear Command" },
+    { SIXTOP_RC_SUCCESS, "Success Response" },
+    { SIXTOP_RC_VER_ERR, "Version Error Response" },
+    { SIXTOP_RC_SFID_ERR, "SFID Error Response" },
+    { SIXTOP_RC_BUSY, "Busy Response" },
+    { SIXTOP_RC_RESET, "Reset Response" },
+    { SIXTOP_RC_ERR, "Error Response" },
     { 0, NULL }
 };
 
@@ -954,7 +974,7 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
             case IEEE802154_P_IE_6TOPGROUPID:
                 *offset += 2;
                 dissect_ieee802154_p_inf_elem_6top(tvb, pinfo, p_inf_elem_tree, packet, offset);
-                *offset += packet->p_ie_content_lenght;
+                /**offset += packet->p_ie_content_lenght;*/
                                                            
                 break;
             default : 
@@ -994,30 +1014,96 @@ dissect_ieee802154_p_inf_elem_6top(tvbuff_t *tvb, packet_info *pinfo, proto_tree
     guint8               sixp_code;
     guint8               sixp_sfid;
     guint8               sixp_sub_id;
+    guint8               ie_length;
     tvbuff_t  *volatile  payload_tvb;
+    gboolean             condition;
 
     proto_tree *p_inf_elem_tree_sixtop = NULL;
     sixp_sub_id   = tvb_get_guint8(tvb, *offset) & 0xFF;
     sixp_version  = tvb_get_guint8(tvb, *offset + 1) & SIXP_VERSION;
-    sixp_code     = tvb_get_guint8(tvb, *offset + 1) & SIXP_CODE >> 4;
+    sixp_code     = (tvb_get_guint8(tvb, *offset + 1) & SIXP_CODE) >> 4;
     sixp_sfid     = tvb_get_guint8(tvb, *offset + 2) & SIXP_SFID ;
+    ie_length     = packet->p_ie_content_lenght;
 
     payload_tvb = tvb_new_subset(tvb, *offset + 3, packet->p_ie_content_lenght - 3, packet->p_ie_content_lenght - 3);
 
-    p_inf_elem_tree_sixtop = proto_tree_add_subtree_format(p_inf_elem_tree, tvb, *offset, packet->p_ie_content_lenght , ett_ieee802154_p_ie_sixtop, NULL,
-                "6TOP Message");
+    p_inf_elem_tree_sixtop = proto_tree_add_subtree_format(p_inf_elem_tree, tvb, *offset, packet->p_ie_content_lenght, ett_ieee802154_p_ie_sixtop, NULL,
+                "6TOP Message: ");
+
+    proto_item_append_text(p_inf_elem_tree_sixtop, " %s", val_to_str_const(sixp_code, ieee802154_sixtop_commands_responses, "Unknown"));
 
     if (p_inf_elem_tree){
-            proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_subid, tvb, *offset, 1,tvb_get_guint8(tvb, *offset) &  0xFF);
-            proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_version, tvb, (*offset + 1), 1,tvb_get_guint8(tvb, *offset +1) & SIXP_VERSION);
-            proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_code, tvb, (*offset + 1), 1, (tvb_get_guint8(tvb, *offset + 1) & SIXP_CODE) >> 4 );
-            proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_sfid, tvb, (*offset + 2), 1, tvb_get_guint8(tvb, *offset + 2) & SIXP_SFID );
+        proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_subid, tvb, *offset, 1,tvb_get_guint8(tvb, *offset) &  0xFF);
+        proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_version, tvb, (*offset + 1), 1,tvb_get_guint8(tvb, *offset +1) & SIXP_VERSION);
+        proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_code, tvb, (*offset + 1), 1, (tvb_get_guint8(tvb, *offset + 1) & SIXP_CODE) >> 4 );
+        proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_sfid, tvb, (*offset + 2), 1, tvb_get_guint8(tvb, *offset + 2) & SIXP_SFID );
+        *offset += 3;
+        ie_length -= 3;
 
-            call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_sixtop);
+        switch (sixp_code){
+            case SIXTOP_CMD_ADD:
+                proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_ncells, tvb, *offset, 1,tvb_get_guint8(tvb, *offset) &  0xFF); 
+                proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_container, tvb, *offset + 1, 1,tvb_get_guint8(tvb, *offset + 1) &  0xFF); 
+                ie_length -= 2;
+                *offset += 2;
+                while (ie_length > 0){
+                    proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_slotoffset, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) &  0xFFFF);
+                    proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_choffset, tvb, *offset + 2, 2, tvb_get_letohs(tvb, *offset +2) &  0xFFFF);
+                    ie_length -= 4;
+                    *offset += 4;
+                }
+                break;
+            case SIXTOP_CMD_DELETE:
+                proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_ncells, tvb, *offset, 1,tvb_get_guint8(tvb, *offset) &  0xFF); 
+                proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_container, tvb, *offset + 1, 1,tvb_get_guint8(tvb, *offset + 1) &  0xFF); 
+                ie_length -= 2;
+                *offset += 2;
+                while (ie_length > 0){
+                    proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_slotoffset, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) &  0xFFFF);
+                    proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_choffset, tvb, *offset + 2, 2, tvb_get_letohs(tvb, *offset + 2) &  0xFFFF);
+                    ie_length -= 4;
+                    *offset += 4;
+                }
+                break;
+            case SIXTOP_CMD_COUNT:
+                proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_container, tvb, *offset, 1,tvb_get_guint8(tvb, *offset) &  0xFF); 
+                *offset += 1;
+                break;
+            case SIXTOP_CMD_LIST:
+                proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_container, tvb, *offset, 1,tvb_get_guint8(tvb, *offset) &  0xFF); 
+                *offset += 1;
+                break;
+            case SIXTOP_CMD_CLEAR:
+                proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_container, tvb, *offset, 1,tvb_get_guint8(tvb, *offset) &  0xFF); 
+                *offset += 1;
+                break;
+            case SIXTOP_RC_SUCCESS:
+                if ((ie_length == 0) || (ie_length >= 4)){
+                    while (ie_length > 0){
+                        proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_slotoffset, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) &  0xFFFF);
+                        proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_choffset, tvb, *offset + 2, 2, tvb_get_letohs(tvb, *offset) &  0xFFFF);
+                        ie_length -= 4;
+                        *offset += 4;
+                    }
+                }
+                else {
+                    proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_cells_sched, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) &  0xFFFF);
+                    *offset += 2;
+                }
+                break;
+            default:
+                call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_sixtop);
+        }
+        
     }
-
-
-    
+/*
+SIXTOP_RC_SUCCESS
+SIXTOP_RC_VER_ERR
+SIXTOP_RC_SFID_ERR
+SIXTOP_RC_BUSY
+SIXTOP_RC_RESET
+SIXTOP_RC_ERR
+    */
 }
 
 /*FUNCTION:------------------------------------------------------
@@ -3401,8 +3487,22 @@ void proto_register_ieee802154(void)
     };
 
     static hf_register_info hf[] = {
-
         /* SIXTOP header fields*/
+        { &hf_ieee802154_p_ie_sixp_cells_sched,
+        { "Number of scheduled cells",                   "wpan.sixp_sched_cells", FT_UINT16, BASE_HEX, NULL, 0x0,
+            NULL, HFILL }},
+        { &hf_ieee802154_p_ie_sixp_choffset,
+        { "Channel Offset",                   "wpan.sixp_ch_offset", FT_UINT16, BASE_HEX, NULL, 0x0,
+            NULL, HFILL }},
+        { &hf_ieee802154_p_ie_sixp_slotoffset,
+        { "Slot Offset",                   "wpan.sixp_slotoffset", FT_UINT16, BASE_HEX, NULL, 0x0,
+            NULL, HFILL }},
+        { &hf_ieee802154_p_ie_sixp_container,
+        { "Container",                   "wpan.sixp_container", FT_UINT8, BASE_HEX, NULL, 0x0,
+            NULL, HFILL }},
+        { &hf_ieee802154_p_ie_sixp_ncells,
+        { "Number of desired cells",                   "wpan.sixpdes_cells", FT_UINT8, BASE_HEX, NULL, 0x0,
+            NULL, HFILL }},
         { &hf_ieee802154_p_ie_sixp_subid,
         { "6P Sub IE ID",                   "wpan.sixpsubieid", FT_UINT8, BASE_HEX, NULL, 0x0,
             NULL, HFILL }},
