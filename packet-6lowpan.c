@@ -557,7 +557,7 @@ static tvbuff_t *   dissect_6lowpan_mesh        (tvbuff_t *tvb, packet_info *pin
 static tvbuff_t *   dissect_6lowpan_frag_first  (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, const guint8 *siid, const guint8 *diid);
 static tvbuff_t *   dissect_6lowpan_frag_middle (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 static void         dissect_6lowpan_unknown     (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
-static tvbuff_t * 	dissect_6lowpan_6loRH 		(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gint dgram_size , const guint8 *siid, const guint8 *diid*/);
+static tvbuff_t * 	dissect_6lowpan_6loRH 		(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*, gint dgram_size , const guint8 *siid, const guint8 *diid*/);
 
 /* Helper functions. */
 static gboolean     lowpan_dlsrc_to_ifcid   (packet_info *pinfo, guint8 *ifcid);
@@ -1108,7 +1108,7 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
     	}
 
     	next = tvb_new_subset_remaining(tvb, 1);
-    	next = dissect_6lowpan_6loRH(next, pinfo, lowpan_tree/*, -1, src_iid, dst_iid*/);
+    	next = dissect_6lowpan_6loRH(next,/* pinfo,*/ lowpan_tree/*, -1, src_iid, dst_iid*/);
     	if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPHC_BITS) == LOWPAN_PATTERN_IPHC) {
         	next = dissect_6lowpan_iphc(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
         }
@@ -1157,7 +1157,7 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
  */
 
 static tvbuff_t *
-dissect_6lowpan_6loRH(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree/*, gint dgram_size, const guint8 *siid, const guint8 *diid*/)
+dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*, gint dgram_size, const guint8 *siid, const guint8 *diid*/)
 {
 
 /*	ieee802154_hints_t  *hints;
