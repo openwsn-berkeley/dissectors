@@ -1222,10 +1222,13 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*,
     	 			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
      				proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset+2, 1, loRHE_hoplimit);
 
-   		  			for (int i = 0; i < 16; ++i){
-     					ipv6.ip6_src.bytes[i] = tvb_get_guint8(tvb, offset + 3 + i);	
-     				}
-     				proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);
+   		  			if (loRHE_length > 1){
+                        for (int i = 0; i < 16; ++i){
+     					  ipv6.ip6_src.bytes[i] = tvb_get_guint8(tvb, offset + 3 + i);  	
+     				   }
+                       proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);
+                    }   
+     			/*	proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);*/
      				offset += 2 + loRHE_length;
      			}
      			else if (loRHE_class == LOWPAN_PATTERN_6LORHC){  /*Critical Routing Header*/

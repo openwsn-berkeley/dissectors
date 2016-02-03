@@ -1016,8 +1016,7 @@ dissect_ieee802154_p_inf_elem_6top(tvbuff_t *tvb, packet_info *pinfo, proto_tree
     guint8               sixp_sub_id;
     guint8               ie_length;
     tvbuff_t  *volatile  payload_tvb;
-    gboolean             condition;
-
+    
     proto_tree *p_inf_elem_tree_sixtop = NULL;
     sixp_sub_id   = tvb_get_guint8(tvb, *offset) & 0xFF;
     sixp_version  = tvb_get_guint8(tvb, *offset + 1) & SIXP_VERSION;
@@ -1266,22 +1265,22 @@ dissect_802154_h_ie_time_correction(tvbuff_t *tvb, proto_tree *h_inf_elem_tree, 
                 "Data: %s Content(0x%04x)",
                 val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements_defined, "Unknown"),  time_correction);
 
-    if(time_correction <= 0x7ff){
+    if(time_correction <= 0x07ff) {
         if (h_inf_elem_tree_payload){
             proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction1, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) & 0x0FFF);    
         }
     }
-    else if ((time_correction >= 0x0800) & (time_correction <= 0x0fff)){
+    else if ((time_correction >= 0x0800) && (time_correction <= 0x0fff)){
         if (h_inf_elem_tree_payload){
             proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction2, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) & 0x0FFF);    
         }
     }
-    else if ((time_correction >= 0x8000) & (time_correction <= 0x87ff)){
+    else if ((time_correction >= 0x8000) && (time_correction <= 0x87ff)){
         if (h_inf_elem_tree_payload){
             proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction3, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) & 0x8FFF);    
         }
     }
-    else if ((time_correction >= 0x8800) & (time_correction <= 0x8fff )){
+    else if ((time_correction >= 0x8800) && (time_correction <= 0x8fff )){
         if (h_inf_elem_tree_payload){
             proto_tree_add_uint(h_inf_elem_tree_payload, hf_ieee802154_h_ie_time_correction4, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) & 0x8FFF);    
         }
