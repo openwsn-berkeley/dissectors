@@ -1231,7 +1231,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*,
                 if (loRHE_class == LOWPAN_PATTERN_6LORHE){  /*Elective Routing Header*/
                     condition = 1 ;
                     if (loRHE_type >= 15) {
-                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH)+1);
+                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
                         proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRHE_type);
                         offset += 2 ;
                         if (loRHE_type == 15) {
@@ -1303,7 +1303,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*,
                     }
                     else if (loRHE_type <= 4){
                         memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
-                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH)+1);
+                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
                         proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRHE_type);
                         offset += 2 ;
 
@@ -3001,10 +3001,10 @@ proto_register_6lowpan(void)
                     { "6loRH Type",               "6lowpan.rhtype",
                                                                                       FT_UINT16, BASE_HEX, VALS(lowpan_patterns_rh_type), LOWPAN_PATTERN_6LORHE_TYPE, NULL, HFILL }},
             { &hf_6lowpan_6lorhc_size,
-                    { "6loRH Hop Number",               "6lowpan.HopNuevo",
+                    { "6loRH Hop Number-1",               "6lowpan.HopNuevo",
                                                                                       FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
             { &hf_6lowpan_6lorhe_size,
-                    { "6loRH Bitmap Word Number",               "6lowpan.WordNuevo",
+                    { "6loRH Bitmap Word Number-1",               "6lowpan.WordNuevo",
                                                                                       FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
             { &hf_6lowpan_6lorhe_length,
                     { "6loRH Elective Length",               "6lowpan.rhElength",
