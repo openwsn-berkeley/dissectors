@@ -1218,7 +1218,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*,
 
             loRHE_class		= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
             loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
-            loRHE_unitnums 	= loRHE_length + 1;
+            loRHE_unitnums  = loRHE_length + 1;
             loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
             loRHE_hoplimit 	= tvb_get_guint8(tvb, offset+2);
             IK 				= (loRH_flags & LOWPAN_5_RPI_BITS_IK) >> 8;
@@ -1231,7 +1231,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*,
                 if (loRHE_class == LOWPAN_PATTERN_6LORHE){  /*Elective Routing Header*/
                     condition = 1 ;
                     if (loRHE_type >= 15) {
-                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, loRHE_unitnums);
+                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH)+1);
                         proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRHE_type);
                         offset += 2 ;
                         if (loRHE_type == 15) {
@@ -1246,7 +1246,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*,
                     else if (loRHE_type == 6) {
                         memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
                         proto_tree_add_uint(loRH_tree, hf_6lowpan_6lorhe_length, tvb, offset, 2,
-                                            loRHE_length);
+                                            loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
                         proto_tree_add_uint(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2,
                                             loRHE_type);
                         proto_tree_add_uint(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset + 2, 1, loRHE_hoplimit);
@@ -1303,7 +1303,7 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*,
                     }
                     else if (loRHE_type <= 4){
                         memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
-                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRHE_unitnums);
+                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH)+1);
                         proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRHE_type);
                         offset += 2 ;
 
@@ -3001,10 +3001,10 @@ proto_register_6lowpan(void)
                     { "6loRH Type",               "6lowpan.rhtype",
                                                                                       FT_UINT16, BASE_HEX, VALS(lowpan_patterns_rh_type), LOWPAN_PATTERN_6LORHE_TYPE, NULL, HFILL }},
             { &hf_6lowpan_6lorhc_size,
-                    { "6loRH Hop Number - 1",               "6lowpan.HopNuevo",
+                    { "6loRH Hop Number",               "6lowpan.HopNuevo",
                                                                                       FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
             { &hf_6lowpan_6lorhe_size,
-                    { "6loRH Bitmap Word Number - 1",               "6lowpan.WordNuevo",
+                    { "6loRH Bitmap Word Number",               "6lowpan.WordNuevo",
                                                                                       FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
             { &hf_6lowpan_6lorhe_length,
                     { "6loRH Elective Length",               "6lowpan.rhElength",
