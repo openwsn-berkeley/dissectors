@@ -62,7 +62,7 @@ void proto_reg_handoff_6lowpan(void);
 #define LOWPAN_PATTERN_PAGING_DISPATCH	0xf0   	/* Jonathan */
 #define LOWPAN_PATTERN_6LORHC			0x04	/* Jonathan */
 #define LOWPAN_PATTERN_6LORHE			0x05	/* Jonathan */
-#define LOWPAN_PATTERN_6LORHE_CLASS		0xe000	
+#define LOWPAN_PATTERN_6LORHE_CLASS		0xe000
 #define LOWPAN_PATTERN_6LORHE_LENGTH	0x1f00	/* Jonathan */
 #define LOWPAN_PATTERN_6LORHE_TYPE		0x00ff
 #define LOWPAN_PATTERN_6LORH_TYPE0		0x00
@@ -72,6 +72,11 @@ void proto_reg_handoff_6lowpan(void);
 #define LOWPAN_PATTERN_6LORH_TYPE4		0x04
 #define LOWPAN_PATTERN_6LORH_TYPE5		0x05
 #define LOWPAN_PATTERN_6LORH_TYPE6		0x06
+#define LOWPAN_PATTERN_6LORH_TYPE15		0x0F
+#define LOWPAN_PATTERN_6LORH_TYPE16		0x10
+#define LOWPAN_PATTERN_6LORH_TYPE17		0x11
+#define LOWPAN_PATTERN_6LORH_TYPE18		0x12
+#define LOWPAN_PATTERN_6LORH_TYPE19		0x13
 #define LOWPAN_5_RPI_BIT_O				0x1000
 #define LOWPAN_5_RPI_BIT_R				0x0800
 #define LOWPAN_5_RPI_BIT_F				0x0400
@@ -222,9 +227,11 @@ void proto_reg_handoff_6lowpan(void);
 static int hf_6lowpan_pagenb = -1;
 static int hf_6lowpan_routing_header = -1;
 static int hf_6lowpan_6lorhe_length = -1;
+static int hf_6lowpan_6lorhe_size   = -1;
 static int hf_6lowpan_6lorhc_size = -1;
 static int hf_6lowpan_6lorhe_type = -1;
 static int hf_6lowpan_6lorhe_hoplimit = -1;
+static int hf_6lowpan_6lorhe_bitmap = -1;
 static int hf_6lowpan_5_bit_o = -1;
 static int hf_6lowpan_5_bit_r = -1;
 static int hf_6lowpan_5_bit_f = -1;
@@ -350,105 +357,110 @@ static dissector_handle_t       ipv6_handle;
 /* Value Strings */
 
 static const value_string lowpan_patterns_rh_type [] = {
-	{ LOWPAN_PATTERN_6LORH_TYPE0,        "Routing Header 3, 1 byte compression" },
-    { LOWPAN_PATTERN_6LORH_TYPE1,        "Routing Header 3, 2 byte compression" },
-    { LOWPAN_PATTERN_6LORH_TYPE2,        "Routing Header 3, 4 byte compression" },
-    { LOWPAN_PATTERN_6LORH_TYPE3,        "Routing Header 3, 8 byte compression" },
-    { LOWPAN_PATTERN_6LORH_TYPE4,        "Routing Header 3, 16 byte compression" },
-	{ LOWPAN_PATTERN_6LORH_TYPE5,        "Routing Protocol Information" },
-	{ LOWPAN_PATTERN_6LORH_TYPE6,        "IP in IP" },
-    { 0, NULL }
+        { LOWPAN_PATTERN_6LORH_TYPE0,        "Routing Header 3, 1 byte compression" },
+        { LOWPAN_PATTERN_6LORH_TYPE1,        "Routing Header 3, 2 byte compression" },
+        { LOWPAN_PATTERN_6LORH_TYPE2,        "Routing Header 3, 4 byte compression" },
+        { LOWPAN_PATTERN_6LORH_TYPE3,        "Routing Header 3, 8 byte compression" },
+        { LOWPAN_PATTERN_6LORH_TYPE4,        "Routing Header 3, 16 byte compression" },
+        { LOWPAN_PATTERN_6LORH_TYPE5,        "Routing Protocol Information" },
+        { LOWPAN_PATTERN_6LORH_TYPE6,        "IP in IP" },
+        { LOWPAN_PATTERN_6LORH_TYPE15,       "BIER Header, bit-by-bit encoding, no control fields, 32 bits word size" },
+        { LOWPAN_PATTERN_6LORH_TYPE16,       "BIER Header, Bloom filter encoding, 2* 1-byte HashID control fields, 32 bits word size" },
+        { LOWPAN_PATTERN_6LORH_TYPE17,       "BIER Header, bit-by-bit encoding, no control fields, 128 bits word size" },
+        { LOWPAN_PATTERN_6LORH_TYPE18,       "BIER Header, Bloom filter encoding, 8* 1-byte HashID control fields, 128 bits word size" },
+        { LOWPAN_PATTERN_6LORH_TYPE19,       "BIER Header, bit-by-bit encoding, 1-byte GroupID control fields, 128 bits word size" },
+        { 0, NULL }
 };
 static const value_string lowpan_patterns_rh [] = {
-    { LOWPAN_PATTERN_6LORHC,        "Critical Routing Header" },
-    { LOWPAN_PATTERN_6LORHE,        "Elective Routing Header" },
-    { 0, NULL }
+        { LOWPAN_PATTERN_6LORHC,        "Critical Routing Header" },
+        { LOWPAN_PATTERN_6LORHE,        "Elective Routing Header" },
+        { 0, NULL }
 };
 static const value_string lowpan_patterns [] = {
-    { LOWPAN_PATTERN_NALP,          "Not a LoWPAN frame" },
-    { LOWPAN_PATTERN_IPV6,          "Uncompressed IPv6" },
-    { LOWPAN_PATTERN_HC1,           "Header compression" },
-    { LOWPAN_PATTERN_BC0,           "Broadcast" },
-    { LOWPAN_PATTERN_IPHC,          "IP header compression" },
-    { LOWPAN_PATTERN_ESC,           "Escape" },
-    { LOWPAN_PATTERN_MESH,          "Mesh" },
-    { LOWPAN_PATTERN_FRAG1,         "First fragment" },
-    { LOWPAN_PATTERN_FRAGN,         "Fragment" },
-    { 0, NULL }
+        { LOWPAN_PATTERN_NALP,          "Not a LoWPAN frame" },
+        { LOWPAN_PATTERN_IPV6,          "Uncompressed IPv6" },
+        { LOWPAN_PATTERN_HC1,           "Header compression" },
+        { LOWPAN_PATTERN_BC0,           "Broadcast" },
+        { LOWPAN_PATTERN_IPHC,          "IP header compression" },
+        { LOWPAN_PATTERN_ESC,           "Escape" },
+        { LOWPAN_PATTERN_MESH,          "Mesh" },
+        { LOWPAN_PATTERN_FRAG1,         "First fragment" },
+        { LOWPAN_PATTERN_FRAGN,         "Fragment" },
+        { 0, NULL }
 };
 static const true_false_string lowpan_compression = {
-    "Compressed",
-    "Inline"
+        "Compressed",
+        "Inline"
 };
 static const value_string lowpan_hc1_next [] = {
-    { LOWPAN_HC1_NEXT_NONE,         "Inline" },
-    { LOWPAN_HC1_NEXT_UDP,          "UDP" },
-    { LOWPAN_HC1_NEXT_ICMP,         "ICMP" },
-    { LOWPAN_HC1_NEXT_TCP,          "TCP" },
-    { 0, NULL }
+        { LOWPAN_HC1_NEXT_NONE,         "Inline" },
+        { LOWPAN_HC1_NEXT_UDP,          "UDP" },
+        { LOWPAN_HC1_NEXT_ICMP,         "ICMP" },
+        { LOWPAN_HC1_NEXT_TCP,          "TCP" },
+        { 0, NULL }
 };
 static const value_string lowpan_iphc_traffic [] = {
-    { LOWPAN_IPHC_FLOW_CLASS_LABEL, "Traffic class and flow label inline" },
-    { LOWPAN_IPHC_FLOW_ECN_LABEL,   "ECN and flow label inline" },
-    { LOWPAN_IPHC_FLOW_CLASS,       "Traffic class inline" },
-    { LOWPAN_IPHC_FLOW_COMPRESSED,  "Version, traffic class, and flow label compressed" },
-    { 0, NULL }
+        { LOWPAN_IPHC_FLOW_CLASS_LABEL, "Traffic class and flow label inline" },
+        { LOWPAN_IPHC_FLOW_ECN_LABEL,   "ECN and flow label inline" },
+        { LOWPAN_IPHC_FLOW_CLASS,       "Traffic class inline" },
+        { LOWPAN_IPHC_FLOW_COMPRESSED,  "Version, traffic class, and flow label compressed" },
+        { 0, NULL }
 };
 static const value_string lowpan_iphc_hop_limit [] = {
-    { LOWPAN_IPHC_HLIM_INLINE,      "Inline" },
-    { LOWPAN_IPHC_HLIM_1,           "1" },
-    { LOWPAN_IPHC_HLIM_64,          "64" },
-    { LOWPAN_IPHC_HLIM_255,         "255" },
-    { 0, NULL }
+        { LOWPAN_IPHC_HLIM_INLINE,      "Inline" },
+        { LOWPAN_IPHC_HLIM_1,           "1" },
+        { LOWPAN_IPHC_HLIM_64,          "64" },
+        { LOWPAN_IPHC_HLIM_255,         "255" },
+        { 0, NULL }
 };
 static const true_false_string lowpan_iphc_addr_compression = {
-    "Stateful",
-    "Stateless"
+        "Stateful",
+        "Stateless"
 };
 static const value_string lowpan_iphc_addr_modes [] = {
-    { LOWPAN_IPHC_ADDR_FULL_INLINE, "Inline" },
-    { LOWPAN_IPHC_ADDR_64BIT_INLINE,"64-bits inline" },
-    { LOWPAN_IPHC_ADDR_16BIT_INLINE,"16-bits inline" },
-    { LOWPAN_IPHC_ADDR_COMPRESSED,  "Compressed" },
-    { 0, NULL }
+        { LOWPAN_IPHC_ADDR_FULL_INLINE, "Inline" },
+        { LOWPAN_IPHC_ADDR_64BIT_INLINE,"64-bits inline" },
+        { LOWPAN_IPHC_ADDR_16BIT_INLINE,"16-bits inline" },
+        { LOWPAN_IPHC_ADDR_COMPRESSED,  "Compressed" },
+        { 0, NULL }
 };
 static const value_string lowpan_iphc_saddr_stateful_modes [] = {
-    { LOWPAN_IPHC_ADDR_FULL_INLINE, "Unspecified address (::)" },
-    { LOWPAN_IPHC_ADDR_64BIT_INLINE,"64-bits inline" },
-    { LOWPAN_IPHC_ADDR_16BIT_INLINE,"16-bits inline" },
-    { LOWPAN_IPHC_ADDR_COMPRESSED,  "Compressed" },
-    { 0, NULL }
+        { LOWPAN_IPHC_ADDR_FULL_INLINE, "Unspecified address (::)" },
+        { LOWPAN_IPHC_ADDR_64BIT_INLINE,"64-bits inline" },
+        { LOWPAN_IPHC_ADDR_16BIT_INLINE,"16-bits inline" },
+        { LOWPAN_IPHC_ADDR_COMPRESSED,  "Compressed" },
+        { 0, NULL }
 };
 static const value_string lowpan_iphc_daddr_stateful_modes [] = {
-    { LOWPAN_IPHC_ADDR_64BIT_INLINE,"64-bits inline" },
-    { LOWPAN_IPHC_ADDR_16BIT_INLINE,"16-bits inline" },
-    { LOWPAN_IPHC_ADDR_COMPRESSED,  "Compressed" },
-    { 0, NULL }
+        { LOWPAN_IPHC_ADDR_64BIT_INLINE,"64-bits inline" },
+        { LOWPAN_IPHC_ADDR_16BIT_INLINE,"16-bits inline" },
+        { LOWPAN_IPHC_ADDR_COMPRESSED,  "Compressed" },
+        { 0, NULL }
 };
 static const value_string lowpan_iphc_mcast_modes [] = {
-    { LOWPAN_IPHC_MCAST_FULL,       "Inline" },
-    { LOWPAN_IPHC_MCAST_48BIT,      "48-bits inline" },
-    { LOWPAN_IPHC_MCAST_32BIT,      "32-bits inline" },
-    { LOWPAN_IPHC_MCAST_8BIT,       "8-bits inline" },
-    { 0, NULL }
+        { LOWPAN_IPHC_MCAST_FULL,       "Inline" },
+        { LOWPAN_IPHC_MCAST_48BIT,      "48-bits inline" },
+        { LOWPAN_IPHC_MCAST_32BIT,      "32-bits inline" },
+        { LOWPAN_IPHC_MCAST_8BIT,       "8-bits inline" },
+        { 0, NULL }
 };
 static const value_string lowpan_iphc_mcast_stateful_modes [] = {
-    { LOWPAN_IPHC_MCAST_STATEFUL_48BIT, "48-bits inline" },
-    { 0, NULL }
+        { LOWPAN_IPHC_MCAST_STATEFUL_48BIT, "48-bits inline" },
+        { 0, NULL }
 };
 static const value_string lowpan_nhc_patterns [] = {
-    { LOWPAN_NHC_PATTERN_EXT,       "IPv6 extension header" },
-    { LOWPAN_NHC_PATTERN_UDP,       "UDP compression header" },
-    { 0, NULL }
+        { LOWPAN_NHC_PATTERN_EXT,       "IPv6 extension header" },
+        { LOWPAN_NHC_PATTERN_UDP,       "UDP compression header" },
+        { 0, NULL }
 };
 static const value_string lowpan_nhc_eid [] = {
-    { LOWPAN_NHC_EID_HOP_BY_HOP,    "IPv6 hop-by-hop options" },
-    { LOWPAN_NHC_EID_ROUTING,       "IPv6 routing" },
-    { LOWPAN_NHC_EID_FRAGMENT,      "IPv6 fragment" },
-    { LOWPAN_NHC_EID_DEST_OPTIONS,  "IPv6 destination options" },
-    { LOWPAN_NHC_EID_MOBILITY,      "IPv6 mobility header" },
-    { LOWPAN_NHC_EID_IPV6,          "IPv6 header" },
-    { 0, NULL }
+        { LOWPAN_NHC_EID_HOP_BY_HOP,    "IPv6 hop-by-hop options" },
+        { LOWPAN_NHC_EID_ROUTING,       "IPv6 routing" },
+        { LOWPAN_NHC_EID_FRAGMENT,      "IPv6 fragment" },
+        { LOWPAN_NHC_EID_DEST_OPTIONS,  "IPv6 destination options" },
+        { LOWPAN_NHC_EID_MOBILITY,      "IPv6 mobility header" },
+        { LOWPAN_NHC_EID_IPV6,          "IPv6 header" },
+        { 0, NULL }
 };
 /* Reassembly Data */
 static int hf_6lowpan_fragments = -1;
@@ -465,26 +477,26 @@ static gint ett_6lowpan_fragment = -1;
 static gint ett_6lowpan_fragments = -1;
 
 static const fragment_items lowpan_frag_items = {
-    /* Fragment subtrees */
-    &ett_6lowpan_fragment,
-    &ett_6lowpan_fragments,
-    /* Fragment fields */
-    &hf_6lowpan_fragments,
-    &hf_6lowpan_fragment,
-    &hf_6lowpan_fragment_overlap,
-    &hf_6lowpan_fragment_overlap_conflicts,
-    &hf_6lowpan_fragment_multiple_tails,
-    &hf_6lowpan_fragment_too_long_fragment,
-    &hf_6lowpan_fragment_error,
-    &hf_6lowpan_fragment_count,
-    /* Reassembled in field */
-    &hf_6lowpan_reassembled_in,
-    /* Reassembled length field */
-    &hf_6lowpan_reassembled_length,
-    /* Reassembled data field */
-    NULL,
-    /* Tag */
-    "6LoWPAN fragments"
+        /* Fragment subtrees */
+        &ett_6lowpan_fragment,
+        &ett_6lowpan_fragments,
+        /* Fragment fields */
+        &hf_6lowpan_fragments,
+        &hf_6lowpan_fragment,
+        &hf_6lowpan_fragment_overlap,
+        &hf_6lowpan_fragment_overlap_conflicts,
+        &hf_6lowpan_fragment_multiple_tails,
+        &hf_6lowpan_fragment_too_long_fragment,
+        &hf_6lowpan_fragment_error,
+        &hf_6lowpan_fragment_count,
+        /* Reassembled in field */
+        &hf_6lowpan_reassembled_in,
+        /* Reassembled length field */
+        &hf_6lowpan_reassembled_length,
+        /* Reassembled data field */
+        NULL,
+        /* Tag */
+        "6LoWPAN fragments"
 };
 
 static reassembly_table lowpan_reassembly_table;
@@ -492,7 +504,7 @@ static GHashTable *lowpan_context_table = NULL;
 
 /* Link-Local prefix used by 6LoWPAN (FF80::/10) */
 static const guint8 lowpan_llprefix[8] = {
-    0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
 /* Context hash table map key. */
@@ -552,7 +564,7 @@ static tvbuff_t *   dissect_6lowpan_hc1         (tvbuff_t *tvb, packet_info *pin
 static tvbuff_t *   dissect_6lowpan_bc0         (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 static tvbuff_t *   dissect_6lowpan_iphc        (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dgram_size, const guint8 *siid, const guint8 *diid);
 static struct lowpan_nhdr *
-                    dissect_6lowpan_iphc_nhc    (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint offset, gint dgram_size, const guint8 *siid, const guint8 *diid);
+        dissect_6lowpan_iphc_nhc    (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint offset, gint dgram_size, const guint8 *siid, const guint8 *diid);
 static tvbuff_t *   dissect_6lowpan_mesh        (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, guint8 *siid, guint8 *diid);
 static tvbuff_t *   dissect_6lowpan_frag_first  (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, const guint8 *siid, const guint8 *diid);
 static tvbuff_t *   dissect_6lowpan_frag_middle (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
@@ -824,7 +836,7 @@ lowpan_dlsrc_to_ifcid(packet_info *pinfo, guint8 *ifcid)
 
     /* Lookup the IEEE 802.15.4 addressing hints. */
     hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
-                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
+                                                   proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
     if (hints) {
 
         /* Convert the 16-bit short address to an IID using the PAN ID (RFC 4944) or not depending on the preference */
@@ -870,7 +882,7 @@ lowpan_dldst_to_ifcid(packet_info *pinfo, guint8 *ifcid)
 
     /* Lookup the IEEE 802.15.4 addressing hints. */
     hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
-                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
+                                                   proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
     if (hints) {
 
         /* Convert the 16-bit short address to an IID using the PAN ID (RFC 4944) or not depending on the preference */
@@ -1096,35 +1108,35 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_FRAG_BITS) == LOWPAN_PATTERN_FRAGN) {
         next = dissect_6lowpan_frag_middle(next, pinfo, lowpan_tree);
     }
-    /* Uncompressed IPv6 packets. */
+        /* Uncompressed IPv6 packets. */
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPV6_BITS) == LOWPAN_PATTERN_IPV6) {
         next = dissect_6lowpan_ipv6(next, pinfo, lowpan_tree);
     }
-    /* 6loRH*/
+        /* 6loRH*/
 
     else if (tvb_get_bits8(next, 0, 4) == 0xf) {
-    	if (tree) {
-        	proto_tree_add_bits_item(lowpan_tree, hf_6lowpan_pagenb, tvb, 4, 4, 0);
-    	}
+        if (tree) {
+            proto_tree_add_bits_item(lowpan_tree, hf_6lowpan_pagenb, tvb, 4, 4, 0);
+        }
 
-    	next = tvb_new_subset_remaining(tvb, 1);
-    	next = dissect_6lowpan_6loRH(next,/* pinfo,*/ lowpan_tree/*, -1, src_iid, dst_iid*/);
-    	if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPHC_BITS) == LOWPAN_PATTERN_IPHC) {
-        	next = dissect_6lowpan_iphc(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
+        next = tvb_new_subset_remaining(tvb, 1);
+        next = dissect_6lowpan_6loRH(next,/* pinfo,*/ lowpan_tree/*, -1, src_iid, dst_iid*/);
+        if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPHC_BITS) == LOWPAN_PATTERN_IPHC) {
+            next = dissect_6lowpan_iphc(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
         }
         if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_HC1_BITS) == LOWPAN_PATTERN_HC1) {
-        	next = dissect_6lowpan_hc1(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
-		}
-	}
-    /*--------------------------------------------------------------------------------------------------*/
-    /* Compressed IPv6 packets. */
+            next = dissect_6lowpan_hc1(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
+        }
+    }
+        /*--------------------------------------------------------------------------------------------------*/
+        /* Compressed IPv6 packets. */
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_HC1_BITS) == LOWPAN_PATTERN_HC1) {
         next = dissect_6lowpan_hc1(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
     }
     else if (tvb_get_bits8(next, 0, LOWPAN_PATTERN_IPHC_BITS) == LOWPAN_PATTERN_IPHC) {
         next = dissect_6lowpan_iphc(next, pinfo, lowpan_tree, -1, src_iid, dst_iid);
     }
-    /* Unknown 6LoWPAN dispatch type */
+        /* Unknown 6LoWPAN dispatch type */
     else {
         dissect_6lowpan_unknown(next, pinfo, lowpan_tree);
         return tvb_captured_length(tvb);
@@ -1144,7 +1156,7 @@ dissect_6lowpan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
  *      Dissector routine for 6lowpan-RH.
  *
  *      This is one of the final encapsulation types, and will            falso
- *      returned an uncompressed IPv6 datagram (or fragment 			falso	
+ *      returned an uncompressed IPv6 datagram (or fragment 			falso
  *      thereof).
  *  PARAMETERS
  *      tvb             ; packet buffer.
@@ -1163,189 +1175,208 @@ dissect_6lowpan_6loRH(tvbuff_t *tvb, /*packet_info *pinfo,*/ proto_tree *tree/*,
 /*	ieee802154_hints_t  *hints;
     guint16             hint_panid;*/
     guint16				check;
-	gint                offset = 0;
-	gint 				IK;
-	guint16				loRH_flags;
-	proto_tree *        loRH_tree;
-	guint16				loRHE_length;
-	guint8				loRHE_type;
-	guint16				loRHE_class;
-	guint8				loRHE_hoplimit;
-	guint8 				rpl_instance;
-	guint16				sender_rank2;
-	guint8 				sender_rank1;
-	gint 				condition = 1;
-	gint 				nb_hops;
-	
-	struct ip6_hdr      ipv6;
-	
+    gint                offset = 0;
+    gint 				IK;
+    guint16				loRH_flags;
+    proto_tree *        loRH_tree;
+    guint16				loRHE_length;
+    guint8				loRHE_type;
+    guint16				loRHE_class;
+    guint8				loRHE_hoplimit;
+    guint32             loRHE_bitmap32;
+    guint8 				rpl_instance;
+    guint16				sender_rank2;
+    guint8 				sender_rank1;
+    gint 				condition = 1;
+    gint16 				loRHE_unitnums;
+
+    struct ip6_hdr      ipv6;
+
     /* Lookup the IEEE 802.15.4 addressing hints. */
-  /*  hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
-                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);*/
-  /*  hint_panid = (hints) ? (hints->src_pan) : (IEEE802154_BCAST_PAN);*/
-	loRH_flags	= tvb_get_ntohs(tvb, offset);
-	check 		= loRH_flags & 0xC000;
-	
-	if (check == 0x8000) {
+    /*  hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
+                  proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);*/
+    /*  hint_panid = (hints) ? (hints->src_pan) : (IEEE802154_BCAST_PAN);*/
+    loRH_flags	= tvb_get_ntohs(tvb, offset);
+    check 		= loRH_flags & 0xC000;
 
-		memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
+    if (check == 0x8000) {
 
-		while(condition > 0){
-		condition -= 1 ;
-		/*Create the tree*/
-		loRH_tree = proto_tree_add_subtree(tree, tvb, offset, 2, ett_lowpan_routing_header_dispatch, NULL, "6LoRH:");
+        memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
 
-		/* Get and display the pattern. */
-    	proto_tree_add_bits_item(loRH_tree, hf_6lowpan_routing_header, tvb, 8*offset, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);
-    	/*proto_tree_add_bits_item(iphc_tree, hf_6lowpan_pattern, tvb, 0, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);*/
-    	/*=====================================================
-     	* Parse IPHC Header flags.
-     	*=====================================================
-    	 */
-     
-    	loRHE_class		= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
-     	loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
-     	nb_hops			= loRHE_length + 1;
-     	loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     	loRHE_hoplimit 	= tvb_get_guint8(tvb, offset+2);
-     	IK 				= (loRH_flags & LOWPAN_5_RPI_BITS_IK) >> 8;
+        while(condition > 0){
+            condition -= 1 ;
+            /*Create the tree*/
+            loRH_tree = proto_tree_add_subtree(tree, tvb, offset, 2, ett_lowpan_routing_header_dispatch, NULL, "6LoRH:");
 
-     	proto_item_append_text(loRH_tree, " %s", val_to_str_const(loRHE_type, lowpan_patterns_rh_type, "Unknown"));
+            /* Get and display the pattern. */
+            proto_tree_add_bits_item(loRH_tree, hf_6lowpan_routing_header, tvb, 8*offset, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);
+            /*proto_tree_add_bits_item(iphc_tree, hf_6lowpan_pattern, tvb, 0, LOWPAN_PATTERN_IPHC_BITS, ENC_BIG_ENDIAN);*/
+            /*=====================================================
+             * Parse IPHC Header flags.
+             *=====================================================
+             */
 
-     
+            loRHE_class		= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
+            loRHE_length	= (loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH) >> 8;
+            loRHE_unitnums  = loRHE_length + 1;
+            loRHE_type		= (loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
+            loRHE_hoplimit 	= tvb_get_guint8(tvb, offset+2);
+            IK 				= (loRH_flags & LOWPAN_5_RPI_BITS_IK) >> 8;
 
-     		if (tree) {
-     			if (loRHE_class == LOWPAN_PATTERN_6LORHE){  /*Elective Routing Header*/
-     				condition = 1 ;
-     				memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
-	     			proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_length, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
-    	 			proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     				proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset+2, 1, loRHE_hoplimit);
+            proto_item_append_text(loRH_tree, " %s", val_to_str_const(loRHE_type, lowpan_patterns_rh_type, "Unknown"));
 
-   		  			if (loRHE_length > 1){
-                        for (int i = 0; i < 16; ++i){
-     					  ipv6.ip6_src.bytes[i] = tvb_get_guint8(tvb, offset + 3 + i);  	
-     				   }
-                       proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);
-                    }   
-     			/*	proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);*/
-     				offset += 2 + loRHE_length;
-     			}
-     			else if (loRHE_class == LOWPAN_PATTERN_6LORHC){  /*Critical Routing Header*/
-     				condition = 1 ;
-     				if (loRHE_type == 5){
-     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_o,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_O);	
-     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_r,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_R);
-     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_f,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_F);
-     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_i,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_I);
-     					proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_k,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_K);
-     					proto_tree_add_uint        	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     					offset += 2;
-     					if (IK == 0){
-	     					rpl_instance = tvb_get_guint8(tvb, offset);
-    	 					sender_rank2 = tvb_get_ntohs(tvb, offset + 1);
-     						proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
-     						proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset+1, 2, sender_rank2);	
-     						offset += 3;
-     					} 
-     					if (IK == 1){
-     						rpl_instance = tvb_get_guint8(tvb, offset);
- 	    					sender_rank1 = tvb_get_guint8(tvb, offset + 1);
-    	 					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
-    	 					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset+1, 1, sender_rank1);	
-    	 					offset += 2;
-    	 				}
-		     			if (IK == 2){
-		     				rpl_instance = 0x00;
-    		 				sender_rank2 = tvb_get_ntohs(tvb, offset);
-    	 					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
-    	 					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset, 2, sender_rank2);	
-    	 					offset += 2;
-    	 				}
-    	 				if (IK == 3){
-    	 					rpl_instance = 0x00;
-     						sender_rank1 = tvb_get_guint8(tvb, offset);
-     						proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
-     						proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset, 1, sender_rank1);
-     						offset +=1;		
-     					}
-     				}
-     				else if (loRHE_type <= 4){
-     					memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
-     					proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
-     					proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_TYPE);
-     					offset += 2 ;
-	 
-    	 				if (loRHE_type == 0){
 
-	     					for (int i=0; i<nb_hops; i++) {
-   		  						for (int j = 0; j < 1; j++){
-     								ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
-     							}
-     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop0, tvb, offset, 1, &ipv6.ip6_src);
-     							offset +=1;
-	 		       			}
-   			  			}
-   			  			else if (loRHE_type == 1){
 
-     		   	    		for (int i=0; i<nb_hops; i++) {
-     							for (int j = 0; j < 2; ++j){
-    	 							ipv6.ip6_src.bytes[15-1+j] = tvb_get_guint8(tvb, offset);
-       		 	    				offset +=1;
-        		    			}
-     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop1, tvb, offset - 2, 2, &ipv6.ip6_src);
-        		    			/*offset +=2;*/        	    				
-       		 				}
-        				}
-     					else if (loRHE_type == 2){
-     				
-     						for (int i=0; i<nb_hops; i++) {
-     							for (int j = 0; j < 4; j++){
-     								ipv6.ip6_src.bytes[15-3+j] = tvb_get_guint8(tvb, offset);
-     								offset +=1;
-     							}
-     							proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop2, tvb, offset - 4, 4, &ipv6.ip6_src);
-     	      		 			/*offset +=4;*/
-	 		       			}			
-    		 			}
-	   		  			else if (loRHE_type == 3){
-	     				 
-   			  				for (int i=0; i<nb_hops; i++) {
-     							for (int j = 0; j < 8; j++){
-     								ipv6.ip6_src.bytes[15-7+j] = tvb_get_guint8(tvb, offset);
-     								offset +=1;
-       			     			}
-       			     			proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop3, tvb, offset - 8, 8, &ipv6.ip6_src);
-       			     			/*offset +=8;*/
-        					}
-     				
-     					}
-	     				else if (loRHE_type == 4){
+            if (tree) {
+                if (loRHE_class == LOWPAN_PATTERN_6LORHE){  /*Elective Routing Header*/
+                    condition = 1 ;
+                    if (loRHE_type >= 15) {
+                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhe_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+                        proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRHE_type);
+                        offset += 2 ;
+                        if (loRHE_type == 15) {
+                            for (int i=0; i<loRHE_unitnums; i++) {
+                                loRHE_bitmap32 = tvb_get_ntohl(tvb, offset);
+                                proto_tree_add_uint(loRH_tree, hf_6lowpan_6lorhe_bitmap, tvb, offset, 4,
+                                                    loRHE_bitmap32);
+                                offset += 4;
+                            }
+                        }
+                    }
+                    else if (loRHE_type == 6) {
+                        memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
+                        proto_tree_add_uint(loRH_tree, hf_6lowpan_6lorhe_length, tvb, offset, 2,
+                                            loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+                        proto_tree_add_uint(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2,
+                                            loRHE_type);
+                        proto_tree_add_uint(loRH_tree, hf_6lowpan_6lorhe_hoplimit, tvb, offset + 2, 1, loRHE_hoplimit);
 
-	    	 				for (int i=0; i<nb_hops; i++) {
-	     						for (int j = 0; j < 16; j++){
-	     							ipv6.ip6_src.bytes[j] = tvb_get_guint8(tvb, offset);
-	     							offset +=1;
-	     		       			}
-	     		       			proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop4, tvb, offset - 16, 16, &ipv6.ip6_src);
-	     		       			/*offset +=16;*/
-	       		 			}
-	     				}
-	     			}	
-	     		}
-	     		else condition -= 1 ;	
-	     	}
-	     	loRH_flags	= tvb_get_ntohs(tvb, offset);
-	     	loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
-	     	
-    	 	if ((loRHE_class) != LOWPAN_PATTERN_6LORHE){
-    		 	if ((loRHE_class) != LOWPAN_PATTERN_6LORHC){
-     				condition -= 1;
-     			}
-    		}
-  		} 
-   	} 
-    	return tvb_new_subset_remaining(tvb, offset);
+                        if (loRHE_length > 1) {
+                            for (int i = 0; i < 16; ++i) {
+                                ipv6.ip6_src.bytes[i] = tvb_get_guint8(tvb, offset + 3 + i);
+                            }
+                            proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16,
+                                                &ipv6.ip6_src);
+                        }
+                        /*	proto_tree_add_ipv6(loRH_tree, hf_6lowpan_6lorhc_address_src, tvb, offset + 3, 16, &ipv6.ip6_src);*/
+                        offset += 2 + loRHE_length;
+                    }
+                }
+                else if (loRHE_class == LOWPAN_PATTERN_6LORHC){  /*Critical Routing Header*/
+                    condition = 1 ;
+                    if (loRHE_type == 5){
+                        proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_o,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_O);
+                        proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_r,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_R);
+                        proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_f,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_F);
+                        proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_i,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_I);
+                        proto_tree_add_boolean      (loRH_tree, hf_6lowpan_5_bit_k,  tvb, offset, 2, loRH_flags & LOWPAN_5_RPI_BIT_K);
+                        proto_tree_add_uint        	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRHE_type);
+                        offset += 2;
+                        if (IK == 0){
+                            rpl_instance = tvb_get_guint8(tvb, offset);
+                            sender_rank2 = tvb_get_ntohs(tvb, offset + 1);
+                            proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
+                            proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset+1, 2, sender_rank2);
+                            offset += 3;
+                        }
+                        if (IK == 1){
+                            rpl_instance = tvb_get_guint8(tvb, offset);
+                            sender_rank1 = tvb_get_guint8(tvb, offset + 1);
+                            proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 1, rpl_instance);
+                            proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset+1, 1, sender_rank1);
+                            offset += 2;
+                        }
+                        if (IK == 2){
+                            rpl_instance = 0x00;
+                            sender_rank2 = tvb_get_ntohs(tvb, offset);
+                            proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
+                            proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank2, tvb, offset, 2, sender_rank2);
+                            offset += 2;
+                        }
+                        if (IK == 3){
+                            rpl_instance = 0x00;
+                            sender_rank1 = tvb_get_guint8(tvb, offset);
+                            proto_tree_add_uint         	(loRH_tree, hf_6lowpan_rpl_instance, tvb, offset, 0, rpl_instance);
+                            proto_tree_add_uint         	(loRH_tree, hf_6lowpan_sender_rank1, tvb, offset, 1, sender_rank1);
+                            offset +=1;
+                        }
+                    }
+                    else if (loRHE_type <= 4){
+                        memset(&ipv6.ip6_src, 0, sizeof(ipv6.ip6_src));
+                        proto_tree_add_uint         	(loRH_tree, hf_6lowpan_6lorhc_size, tvb, offset, 2, loRH_flags & LOWPAN_PATTERN_6LORHE_LENGTH);
+                        proto_tree_add_uint        	  	(loRH_tree, hf_6lowpan_6lorhe_type, tvb, offset, 2, loRHE_type);
+                        offset += 2 ;
+
+                        if (loRHE_type == 0){
+
+                            for (int i=0; i<loRHE_unitnums; i++) {
+                                for (int j = 0; j < 1; j++){
+                                    ipv6.ip6_src.bytes[15-j] = tvb_get_guint8(tvb, offset);
+                                }
+                                proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop0, tvb, offset, 1, &ipv6.ip6_src);
+                                offset +=1;
+                            }
+                        }
+                        else if (loRHE_type == 1){
+
+                            for (int i=0; i<loRHE_unitnums; i++) {
+                                for (int j = 0; j < 2; ++j){
+                                    ipv6.ip6_src.bytes[15-1+j] = tvb_get_guint8(tvb, offset);
+                                    offset +=1;
+                                }
+                                proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop1, tvb, offset - 2, 2, &ipv6.ip6_src);
+                                /*offset +=2;*/
+                            }
+                        }
+                        else if (loRHE_type == 2){
+
+                            for (int i=0; i<loRHE_unitnums; i++) {
+                                for (int j = 0; j < 4; j++){
+                                    ipv6.ip6_src.bytes[15-3+j] = tvb_get_guint8(tvb, offset);
+                                    offset +=1;
+                                }
+                                proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop2, tvb, offset - 4, 4, &ipv6.ip6_src);
+                                /*offset +=4;*/
+                            }
+                        }
+                        else if (loRHE_type == 3){
+
+                            for (int i=0; i<loRHE_unitnums; i++) {
+                                for (int j = 0; j < 8; j++){
+                                    ipv6.ip6_src.bytes[15-7+j] = tvb_get_guint8(tvb, offset);
+                                    offset +=1;
+                                }
+                                proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop3, tvb, offset - 8, 8, &ipv6.ip6_src);
+                                /*offset +=8;*/
+                            }
+
+                        }
+                        else if (loRHE_type == 4){
+
+                            for (int i=0; i<loRHE_unitnums; i++) {
+                                for (int j = 0; j < 16; j++){
+                                    ipv6.ip6_src.bytes[j] = tvb_get_guint8(tvb, offset);
+                                    offset +=1;
+                                }
+                                proto_tree_add_ipv6(tree, hf_6lowpan_6lorhc_address_hop4, tvb, offset - 16, 16, &ipv6.ip6_src);
+                                /*offset +=16;*/
+                            }
+                        }
+                    }
+                }
+                else condition -= 1 ;
+            }
+            loRH_flags	= tvb_get_ntohs(tvb, offset);
+            loRHE_class	= (loRH_flags & LOWPAN_PATTERN_6LORHE_CLASS) >> 13;
+
+            if ((loRHE_class) != LOWPAN_PATTERN_6LORHE){
+                if ((loRHE_class) != LOWPAN_PATTERN_6LORHC){
+                    condition -= 1;
+                }
+            }
+        }
+    }
+    return tvb_new_subset_remaining(tvb, offset);
 }
 /*FUNCTION:------------------------------------------------------
  *  NAME
@@ -1410,20 +1441,20 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
     struct ip6_hdr      ipv6;
     struct lowpan_nhdr *nhdr_list;
     static const int * hc1_encodings[] = {
-        &hf_6lowpan_hc1_source_prefix,
-        &hf_6lowpan_hc1_source_ifc,
-        &hf_6lowpan_hc1_dest_prefix,
-        &hf_6lowpan_hc1_dest_ifc,
-        &hf_6lowpan_hc1_class,
-        &hf_6lowpan_hc1_next,
-        &hf_6lowpan_hc1_more,
-        NULL
+            &hf_6lowpan_hc1_source_prefix,
+            &hf_6lowpan_hc1_source_ifc,
+            &hf_6lowpan_hc1_dest_prefix,
+            &hf_6lowpan_hc1_dest_ifc,
+            &hf_6lowpan_hc1_class,
+            &hf_6lowpan_hc1_next,
+            &hf_6lowpan_hc1_more,
+            NULL
     };
     static const int * hc2_encodings[] = {
-        &hf_6lowpan_hc2_udp_src,
-        &hf_6lowpan_hc2_udp_dst,
-        &hf_6lowpan_hc2_udp_len,
-        NULL
+            &hf_6lowpan_hc2_udp_src,
+            &hf_6lowpan_hc2_udp_dst,
+            &hf_6lowpan_hc2_udp_len,
+            NULL
     };
 
     /*=====================================================
@@ -1441,7 +1472,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
     hc1_encoding = tvb_get_guint8(tvb, offset);
     next_header = ((hc1_encoding & LOWPAN_HC1_NEXT) >> 1);
     proto_tree_add_bitmask(hc_tree, tvb, offset, hf_6lowpan_hc1_encoding,
-                   ett_6lowpan_hc1_encoding, hc1_encodings, ENC_NA);
+                           ett_6lowpan_hc1_encoding, hc1_encodings, ENC_NA);
     offset += 1;
 
     /* Get and display the HC2 encoding bits, if present. */
@@ -1449,7 +1480,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
         if (next_header == LOWPAN_HC1_NEXT_UDP) {
             hc_udp_encoding = tvb_get_guint8(tvb, offset);
             proto_tree_add_bitmask(tree, tvb, offset, hf_6lowpan_hc2_udp_encoding,
-                   ett_6lowpan_hc2_udp, hc2_encodings, ENC_NA);
+                                   ett_6lowpan_hc2_udp, hc2_encodings, ENC_NA);
             offset += 1;
         }
         else {
@@ -1478,7 +1509,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
     ipv6.ip6_hops = tvb_get_bits8(tvb, bit_offset, LOWPAN_IPV6_HOP_LIMIT_BITS);
     if (tree) {
         proto_tree_add_uint(tree, hf_6lowpan_hop_limit, tvb, bit_offset>>3,
-                BITS_TO_BYTE_LEN(bit_offset, LOWPAN_IPV6_HOP_LIMIT_BITS), ipv6.ip6_hops);
+                            BITS_TO_BYTE_LEN(bit_offset, LOWPAN_IPV6_HOP_LIMIT_BITS), ipv6.ip6_hops);
     }
     bit_offset += LOWPAN_IPV6_HOP_LIMIT_BITS;
 
@@ -1506,7 +1537,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
     /* Display the source address. */
     if (tree) {
         proto_tree_add_ipv6(tree, hf_6lowpan_source, tvb, offset>>3,
-                BITS_TO_BYTE_LEN(offset, (bit_offset-offset)), &ipv6.ip6_src);
+                            BITS_TO_BYTE_LEN(offset, (bit_offset-offset)), &ipv6.ip6_src);
     }
     /*
      * Do not set the address columns until after defragmentation, since we have
@@ -1538,7 +1569,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
     /* Display the destination address. */
     if (tree) {
         proto_tree_add_ipv6(tree, hf_6lowpan_dest, tvb, offset>>3,
-                BITS_TO_BYTE_LEN(offset, (bit_offset-offset)), &ipv6.ip6_dst);
+                            BITS_TO_BYTE_LEN(offset, (bit_offset-offset)), &ipv6.ip6_dst);
     }
     /*
      * Do not set the address columns until after defragmentation, since we have
@@ -1554,7 +1585,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
         ipv6_class = tvb_get_bits8(tvb, bit_offset, LOWPAN_IPV6_TRAFFIC_CLASS_BITS);
         if (tree) {
             proto_tree_add_uint(tree, hf_6lowpan_traffic_class, tvb, bit_offset>>3,
-                    BITS_TO_BYTE_LEN(bit_offset, LOWPAN_IPV6_TRAFFIC_CLASS_BITS), ipv6_class);
+                                BITS_TO_BYTE_LEN(bit_offset, LOWPAN_IPV6_TRAFFIC_CLASS_BITS), ipv6_class);
         }
         bit_offset += LOWPAN_IPV6_TRAFFIC_CLASS_BITS;
 
@@ -1562,7 +1593,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
         ipv6.ip6_flow = tvb_get_bits32(tvb, bit_offset, LOWPAN_IPV6_FLOW_LABEL_BITS, ENC_BIG_ENDIAN);
         if (tree) {
             proto_tree_add_uint(tree, hf_6lowpan_flow_label, tvb, bit_offset>>3,
-                    BITS_TO_BYTE_LEN(bit_offset, LOWPAN_IPV6_FLOW_LABEL_BITS), ipv6.ip6_flow);
+                                BITS_TO_BYTE_LEN(bit_offset, LOWPAN_IPV6_FLOW_LABEL_BITS), ipv6.ip6_flow);
         }
         bit_offset += LOWPAN_IPV6_FLOW_LABEL_BITS;
     }
@@ -1584,8 +1615,8 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
         ipv6.ip6_nxt = tvb_get_bits8(tvb, bit_offset, LOWPAN_IPV6_NEXT_HEADER_BITS);
         if (tree) {
             proto_tree_add_uint_format_value(tree, hf_6lowpan_next_header, tvb, bit_offset>>3,
-                    BITS_TO_BYTE_LEN(bit_offset, LOWPAN_IPV6_NEXT_HEADER_BITS), ipv6.ip6_nxt,
-                    "%s (0x%02x)", ipprotostr(ipv6.ip6_nxt), ipv6.ip6_nxt);
+                                             BITS_TO_BYTE_LEN(bit_offset, LOWPAN_IPV6_NEXT_HEADER_BITS), ipv6.ip6_nxt,
+                                             "%s (0x%02x)", ipprotostr(ipv6.ip6_nxt), ipv6.ip6_nxt);
         }
         bit_offset += LOWPAN_IPV6_NEXT_HEADER_BITS;
     }
@@ -1610,7 +1641,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
         }
         if (tree) {
             proto_tree_add_uint(tree, hf_6lowpan_udp_src, tvb, offset>>3,
-                    BITS_TO_BYTE_LEN(offset, (bit_offset-offset)), udp.src_port);
+                                BITS_TO_BYTE_LEN(offset, (bit_offset-offset)), udp.src_port);
         }
         udp.src_port = g_ntohs(udp.src_port);
 
@@ -1626,7 +1657,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
         }
         if (tree) {
             proto_tree_add_uint(tree, hf_6lowpan_udp_dst, tvb, offset>>3,
-                    BITS_TO_BYTE_LEN(offset, (bit_offset-offset)), udp.dst_port);
+                                BITS_TO_BYTE_LEN(offset, (bit_offset-offset)), udp.dst_port);
         }
         udp.dst_port = g_ntohs(udp.dst_port);
 
@@ -1635,12 +1666,12 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
             udp.length = tvb_get_bits16(tvb, bit_offset, LOWPAN_UDP_LENGTH_BITS, ENC_BIG_ENDIAN);
             if (tree) {
                 proto_tree_add_uint(tree, hf_6lowpan_udp_len, tvb, bit_offset>>3,
-                        BITS_TO_BYTE_LEN(bit_offset, LOWPAN_UDP_LENGTH_BITS), udp.length);
+                                    BITS_TO_BYTE_LEN(bit_offset, LOWPAN_UDP_LENGTH_BITS), udp.length);
 
             }
             bit_offset += LOWPAN_UDP_LENGTH_BITS;
         }
-        /* Compute the length from the fragmentation headers. */
+            /* Compute the length from the fragmentation headers. */
         else if (dgram_size >= 0) {
             if (dgram_size < (gint)sizeof(struct ip6_hdr)) {
                 /* Datagram size is too small */
@@ -1648,7 +1679,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
             }
             udp.length = dgram_size - (gint)sizeof(struct ip6_hdr);
         }
-        /* Compute the length from the tvbuff size. */
+            /* Compute the length from the tvbuff size. */
         else {
             udp.length = tvb_reported_length(tvb);
             udp.length -= BITS_TO_BYTE_LEN(0, bit_offset + LOWPAN_UDP_CHECKSUM_BITS);
@@ -1660,7 +1691,7 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
         udp.checksum = tvb_get_bits16(tvb, bit_offset, LOWPAN_UDP_CHECKSUM_BITS, ENC_BIG_ENDIAN);
         if (tree) {
             proto_tree_add_uint(tree, hf_6lowpan_udp_checksum, tvb, bit_offset>>3,
-                    BITS_TO_BYTE_LEN(bit_offset, LOWPAN_UDP_CHECKSUM_BITS), udp.checksum);
+                                BITS_TO_BYTE_LEN(bit_offset, LOWPAN_UDP_CHECKSUM_BITS), udp.checksum);
         }
         bit_offset += LOWPAN_UDP_CHECKSUM_BITS;
         udp.checksum = g_ntohs(udp.checksum);
@@ -1678,10 +1709,10 @@ dissect_6lowpan_hc1(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint dg
         memcpy(LOWPAN_NHDR_DATA(nhdr_list), &udp, sizeof(struct udp_hdr));
         tvb_memcpy(tvb, LOWPAN_NHDR_DATA(nhdr_list) + sizeof(struct udp_hdr), offset, length);
     }
-    /*=====================================================
-     * Reconstruct the IPv6 Packet
-     *=====================================================
-     */
+        /*=====================================================
+         * Reconstruct the IPv6 Packet
+         *=====================================================
+         */
     else {
         gint length;
         offset = BITS_TO_BYTE_LEN(0, bit_offset);
@@ -1759,7 +1790,7 @@ dissect_6lowpan_iphc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint d
 
     /* Lookup the IEEE 802.15.4 addressing hints. */
     hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
-                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
+                                                   proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
     hint_panid = (hints) ? (hints->src_pan) : (IEEE802154_BCAST_PAN);
 
     /* Create a tree for the IPHC header. */
@@ -1804,7 +1835,7 @@ dissect_6lowpan_iphc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint d
             }
         }
         ti_dam = proto_tree_add_uint_format_value(iphc_tree, hf_6lowpan_iphc_flag_dam, tvb, offset, 2,
-            iphc_flags & LOWPAN_IPHC_FLAG_DST_MODE, "%s (0x%04x)", val_to_str_const(iphc_dst_mode, am_vs, "Reserved"), iphc_dst_mode);
+                                                  iphc_flags & LOWPAN_IPHC_FLAG_DST_MODE, "%s (0x%04x)", val_to_str_const(iphc_dst_mode, am_vs, "Reserved"), iphc_dst_mode);
     }
     offset += 2;
 
@@ -1890,7 +1921,7 @@ dissect_6lowpan_iphc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint d
         ipv6.ip6_nxt = tvb_get_guint8(tvb, offset);
         if (tree) {
             proto_tree_add_uint_format_value(tree, hf_6lowpan_next_header, tvb, offset, 1, ipv6.ip6_nxt,
-                    "%s (0x%02x)", ipprotostr(ipv6.ip6_nxt), ipv6.ip6_nxt);
+                                             "%s (0x%02x)", ipprotostr(ipv6.ip6_nxt), ipv6.ip6_nxt);
         }
         offset += 1;
     }
@@ -1923,22 +1954,22 @@ dissect_6lowpan_iphc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint d
     if ((iphc_flags & LOWPAN_IPHC_FLAG_SRC_COMP) && (iphc_src_mode == LOWPAN_IPHC_ADDR_SRC_UNSPEC)) {
         sctx = &lowpan_context_default;
     }
-    /* The IID is derived from the encapsulating layer. */
+        /* The IID is derived from the encapsulating layer. */
     else if (iphc_src_mode == LOWPAN_IPHC_ADDR_COMPRESSED) {
         memcpy(&ipv6.ip6_src.bytes[sizeof(ipv6.ip6_src) - LOWPAN_IFC_ID_LEN], siid, LOWPAN_IFC_ID_LEN);
     }
-    /* Full Address inline. */
+        /* Full Address inline. */
     else if (iphc_src_mode == LOWPAN_IPHC_ADDR_FULL_INLINE) {
         if (!(iphc_flags & LOWPAN_IPHC_FLAG_SRC_COMP)) sctx = &lowpan_context_default;
         length = (int)sizeof(ipv6.ip6_src);
         tvb_memcpy(tvb, &ipv6.ip6_src, offset, length);
     }
-    /* 64-bits inline. */
+        /* 64-bits inline. */
     else if (iphc_src_mode == LOWPAN_IPHC_ADDR_64BIT_INLINE) {
         length = 8;
         tvb_memcpy(tvb, &ipv6.ip6_src.bytes[sizeof(ipv6.ip6_src) - length], offset, length);
     }
-    /* 16-bits inline. */
+        /* 16-bits inline. */
     else if (iphc_src_mode == LOWPAN_IPHC_ADDR_16BIT_INLINE) {
         length = 2;
         /* Format becomes ff:fe00:xxxx */
@@ -2013,7 +2044,7 @@ dissect_6lowpan_iphc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint d
             return NULL;
         }
     }
-    /* Stateful multicast compression. */
+        /* Stateful multicast compression. */
     else if ((iphc_flags & LOWPAN_IPHC_FLAG_MCAST_COMP) && (iphc_flags & LOWPAN_IPHC_FLAG_DST_COMP)) {
         if (iphc_dst_mode == LOWPAN_IPHC_MCAST_STATEFUL_48BIT) {
             /* RFC 3306 unicast-prefix based multicast address of the form:
@@ -2039,10 +2070,10 @@ dissect_6lowpan_iphc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint d
         }
     }
 
-    /*=====================================================
-     * Parse and decompress a unicast destination address.
-     *=====================================================
-     */
+        /*=====================================================
+         * Parse and decompress a unicast destination address.
+         *=====================================================
+         */
     else {
         /* (DAC=1 && DAM=00) -> reserved value. */
         if ((iphc_flags & LOWPAN_IPHC_FLAG_DST_COMP) && (iphc_dst_mode == LOWPAN_IPHC_ADDR_FULL_INLINE)) {
@@ -2050,22 +2081,22 @@ dissect_6lowpan_iphc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint d
             expert_add_info(pinfo, ti_dam, &ei_6lowpan_illegal_dest_addr_mode);
             return NULL;
         }
-        /* The IID is derived from the link-layer source. */
+            /* The IID is derived from the link-layer source. */
         else if (iphc_dst_mode == LOWPAN_IPHC_ADDR_COMPRESSED) {
             memcpy(&ipv6.ip6_dst.bytes[sizeof(ipv6.ip6_dst) - LOWPAN_IFC_ID_LEN], diid, LOWPAN_IFC_ID_LEN);
         }
-        /* Full Address inline. */
+            /* Full Address inline. */
         else if (iphc_dst_mode == LOWPAN_IPHC_ADDR_FULL_INLINE) {
             dctx = &lowpan_context_default;
             length = (int)sizeof(ipv6.ip6_dst);
             tvb_memcpy(tvb, &ipv6.ip6_dst, offset, length);
         }
-        /* 64-bits inline. */
+            /* 64-bits inline. */
         else if (iphc_dst_mode == LOWPAN_IPHC_ADDR_64BIT_INLINE) {
             length = 8;
             tvb_memcpy(tvb, &ipv6.ip6_dst.bytes[sizeof(ipv6.ip6_dst) - length], offset, length);
         }
-        /* 16-bits inline. */
+            /* 16-bits inline. */
         else if (iphc_dst_mode == LOWPAN_IPHC_ADDR_16BIT_INLINE) {
             length = 2;
             /* Format becomes ff:fe00:xxxx */
@@ -2113,7 +2144,7 @@ dissect_6lowpan_iphc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gint d
         /* Parse the 6LoWPAN NHC fields. */
         nhdr_list = dissect_6lowpan_iphc_nhc(tvb, pinfo, tree, offset, dgram_size - (int)sizeof(struct ip6_hdr), siid, diid);
     }
-    /* Create an extension header for the remaining payload. */
+        /* Create an extension header for the remaining payload. */
     else {
         length = (gint)tvb_ensure_captured_length_remaining(tvb, offset);
         nhdr_list = (struct lowpan_nhdr *)wmem_alloc(wmem_packet_scope(), sizeof(struct lowpan_nhdr) + length);
@@ -2241,7 +2272,7 @@ dissect_6lowpan_iphc_nhc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gi
             ipv6_ext.ip6e_nxt = tvb_get_guint8(tvb, offset);
             if (tree) {
                 proto_tree_add_uint_format_value(nhc_tree, hf_6lowpan_nhc_ext_next, tvb, offset, 1, ipv6_ext.ip6e_nxt,
-                            "%s (0x%02x)", ipprotostr(ipv6_ext.ip6e_nxt), ipv6_ext.ip6e_nxt);
+                                                 "%s (0x%02x)", ipprotostr(ipv6_ext.ip6e_nxt), ipv6_ext.ip6e_nxt);
                 proto_item_set_end(ti, tvb, offset+1);
             }
             offset += 1;
@@ -2264,7 +2295,7 @@ dissect_6lowpan_iphc_nhc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gi
             length = (length + 7) & ~0x7;
             ipv6_ext.ip6e_len = length>>3;          /* Convert to units of 8 bytes. */
             ipv6_ext.ip6e_len -= 1;                 /* Don't include the first 8 bytes. */
-       }
+        }
 
         /* Create the next header structure for the IPv6 extension header. */
         nhdr = (struct lowpan_nhdr *)wmem_alloc0(wmem_packet_scope(), sizeof(struct lowpan_nhdr) + length);
@@ -2458,14 +2489,12 @@ dissect_6lowpan_iphc_nhc(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gi
                 guint8              zero[3];
                 guint8              proto;
             } cksum_phdr;
-
             /* Fill in the pseudo-header. */
             memcpy(&cksum_phdr.src, pinfo->src.data, sizeof(struct e_in6_addr));
             memcpy(&cksum_phdr.dst, pinfo->dst.data, sizeof(struct e_in6_addr));
             cksum_phdr.length = g_htonl(length + (int)sizeof(struct udp_hdr));
             memset(cksum_phdr.zero, 0, sizeof(cksum_phdr.zero));
             cksum_phdr.proto = IP_PROTO_UDP;
-
             /* Compute the checksum. */
             SET_CKSUM_VEC_PTR(cksum_vec[0], (const guint8 *)&cksum_phdr, sizeof(cksum_phdr));
             SET_CKSUM_VEC_PTR(cksum_vec[1], (const guint8 *)&udp, sizeof(struct udp_hdr));
@@ -2604,7 +2633,7 @@ dissect_6lowpan_mesh(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, guint8
 
         /* Lookup the IEEE 802.15.4 addressing hints wanting RFC 2464 compatibility. */
         hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
-                                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
+                                                       proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
 
         /* Convert the 16-bit short address to an IID using the PAN ID (RFC 4944) or not depending on the preference and the presence of hints from lower layers */
         if (hints && rfc4944_short_address_format) {
@@ -2644,7 +2673,7 @@ dissect_6lowpan_mesh(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, guint8
 
         /* Lookup the IEEE 802.15.4 addressing hints wanting RFC 2464 compatibility. */
         hints = (ieee802154_hints_t *)p_get_proto_data(wmem_file_scope(), pinfo,
-                                proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
+                                                       proto_get_id_by_filter_name(IEEE802154_PROTOABBREV_WPAN), 0);
 
         /* Convert the 16-bit short address to an IID using the PAN ID (RFC 4944) or not depending on the preference and the presence of hints from lower layers */
         if (hints && rfc4944_short_address_format) {
@@ -2731,7 +2760,7 @@ dissect_6lowpan_frag_first(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, 
         /* Check if the datagram size is sane. */
         if (dgram_size < (gint)sizeof(struct ip6_hdr)) {
             expert_add_info_format(pinfo, length_item, &ei_6lowpan_bad_ipv6_header_length,
-                "Length is less than IPv6 header length %u", (guint)sizeof(struct ip6_hdr));
+                                   "Length is less than IPv6 header length %u", (guint)sizeof(struct ip6_hdr));
         }
         frag_tvb = dissect_6lowpan_hc1(frag_tvb, pinfo, tree, dgram_size, siid, diid);
     }
@@ -2739,11 +2768,11 @@ dissect_6lowpan_frag_first(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, 
         /* Check if the datagram size is sane. */
         if (dgram_size < (gint)sizeof(struct ip6_hdr)) {
             expert_add_info_format(pinfo, length_item, &ei_6lowpan_bad_ipv6_header_length,
-                "Length is less than IPv6 header length %u", (guint)sizeof(struct ip6_hdr));
+                                   "Length is less than IPv6 header length %u", (guint)sizeof(struct ip6_hdr));
         }
         frag_tvb = dissect_6lowpan_iphc(frag_tvb, pinfo, tree, dgram_size, siid, diid);
     }
-    /* Unknown 6LoWPAN dispatch type */
+        /* Unknown 6LoWPAN dispatch type */
     else {
         dissect_6lowpan_unknown(frag_tvb, pinfo, tree);
         return NULL;
@@ -2760,13 +2789,13 @@ dissect_6lowpan_frag_first(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, 
     save_fragmented = pinfo->fragmented;
     pinfo->fragmented = TRUE;
     frag_data = fragment_add_check(&lowpan_reassembly_table,
-                    frag_tvb, 0, pinfo, dgram_tag, NULL,
-                    0, frag_size, (frag_size < dgram_size));
+                                   frag_tvb, 0, pinfo, dgram_tag, NULL,
+                                   0, frag_size, (frag_size < dgram_size));
 
     /* Attempt reassembly. */
     new_tvb = process_reassembled_data(frag_tvb, 0, pinfo,
-                    "Reassembled 6LoWPAN", frag_data, &lowpan_frag_items,
-                    NULL, tree);
+                                       "Reassembled 6LoWPAN", frag_data, &lowpan_frag_items,
+                                       NULL, tree);
 
     pinfo->fragmented = save_fragmented;
 
@@ -2845,13 +2874,13 @@ dissect_6lowpan_frag_middle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     save_fragmented = pinfo->fragmented;
     pinfo->fragmented = TRUE;
     frag_data = fragment_add_check(&lowpan_reassembly_table,
-                    tvb, offset, pinfo, dgram_tag, NULL,
-                    dgram_offset, frag_size, ((dgram_offset + frag_size) < dgram_size));
+                                   tvb, offset, pinfo, dgram_tag, NULL,
+                                   dgram_offset, frag_size, ((dgram_offset + frag_size) < dgram_size));
 
     /* Attempt reassembly. */
     new_tvb = process_reassembled_data(tvb, offset, pinfo,
-                    "Reassembled 6LoWPAN", frag_data, &lowpan_frag_items,
-                    NULL, tree);
+                                       "Reassembled 6LoWPAN", frag_data, &lowpan_frag_items,
+                                       NULL, tree);
 
     pinfo->fragmented = save_fragmented;
 
@@ -2859,7 +2888,7 @@ dissect_6lowpan_frag_middle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     if (new_tvb) {
         return new_tvb;
     }
-    /* If reassembly failed, display the payload fragment using the data dissector. */
+        /* If reassembly failed, display the payload fragment using the data dissector. */
     else {
         new_tvb = tvb_new_subset_remaining(tvb, offset);
         call_dissector(data_handle, new_tvb, pinfo, proto_tree_get_root(tree));
@@ -2919,330 +2948,336 @@ void
 proto_register_6lowpan(void)
 {
     static hf_register_info hf[] = {
-    	
-    	{ &hf_6lowpan_6lorhc_address_src,
-          { "Encapsulator Address",                         "6lowpan.src",
-            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }}, 
-    	{ &hf_6lowpan_6lorhc_address_hop0,
-          { "Source/15, Delta",                         "6lowpan.src",
-            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
-    	{ &hf_6lowpan_6lorhc_address_hop1,
-          { "Source/14, Delta",                         "6lowpan.src",
-            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
-        { &hf_6lowpan_6lorhc_address_hop2,
-          { "Source/12, Delta",                         "6lowpan.src",
-            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
-        { &hf_6lowpan_6lorhc_address_hop3,
-          { "Source/8, Delta",                         "6lowpan.src",
-            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
-        { &hf_6lowpan_6lorhc_address_hop4,
-          { "Source/0 Delta",                         "6lowpan.src",
-            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},            
-    	{ &hf_6lowpan_sender_rank1,
-    	  { "Sender Rank",               "6lowpan.sender.rank",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-    	{ &hf_6lowpan_sender_rank2,
-    	  { "Sender Rank",               "6lowpan.sender.rank",
-            FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-    	{ &hf_6lowpan_rpl_instance,
-    	  { "RPL Instance",               "6lowpan.rpl.instance",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-    	{ &hf_6lowpan_5_bit_o,
-          { "Packet direction: UP false, DOWN true",   "6lowpan.5.bitO",
-            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_O, NULL, HFILL }},
-        { &hf_6lowpan_5_bit_r,
-          { "Error detected",   "6lowpan.5.bitR",
-            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_R, NULL, HFILL }},
-        { &hf_6lowpan_5_bit_f,
-          { "No link to destination",   "6lowpan.5.bitF",
-            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_F, NULL, HFILL }},
-        { &hf_6lowpan_5_bit_i,
-          { "Context identifier extension",   "6lowpan.iphc.cid",
-            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_I, NULL, HFILL }},
-        { &hf_6lowpan_5_bit_k,
-          { "Context identifier extension",   "6lowpan.iphc.cid",
-            FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_K, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhe_hoplimit,
-    	  { "6loRH Hop Limit",               "6lowpan.rhhop.limit",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhe_type,
-    	  { "6loRH Type",               "6lowpan.rhtype",
-            FT_UINT16, BASE_HEX, VALS(lowpan_patterns_rh_type), LOWPAN_PATTERN_6LORHE_TYPE, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhc_size,
-    	  { "6loRH Hop Number - 1",               "6lowpan.HopNuevo",
-            FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
-    	{ &hf_6lowpan_6lorhe_length,
-    	  { "6loRH Elective Length",               "6lowpan.rhElength",
-            FT_UINT16, BASE_DEC, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
-    	{ &hf_6lowpan_routing_header,
-    	  { "Routing Header 6lo",               "6lowpan.routingheader",
-            FT_UINT8, BASE_HEX, VALS(lowpan_patterns_rh), 0x0, NULL, HFILL }},
-        { &hf_6lowpan_pagenb,
-    	  { "Page Number",                      "6lowpan.pagenb",
-            FT_UINT16, 16, NULL, 0x0, NULL, HFILL }},
-        
 
-        /* Common 6LoWPAN fields. */
-        { &hf_6lowpan_pattern,
-          { "Pattern",                        "6lowpan.pattern",
-            FT_UINT8, BASE_HEX, VALS(lowpan_patterns), 0x0, NULL, HFILL }},
-        { &hf_6lowpan_nhc_pattern,
-          { "Pattern",                        "6lowpan.nhc.pattern",
-            FT_UINT8, BASE_HEX, VALS(lowpan_nhc_patterns), 0x0, NULL, HFILL }},
+            { &hf_6lowpan_6lorhc_address_src,
+                    { "Encapsulator Address",                         "6lowpan.src",
+                                                                                      FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+            { &hf_6lowpan_6lorhc_address_hop0,
+                    { "Source/15, Delta",                         "6lowpan.src",
+                                                                                      FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+            { &hf_6lowpan_6lorhc_address_hop1,
+                    { "Source/14, Delta",                         "6lowpan.src",
+                                                                                      FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+            { &hf_6lowpan_6lorhc_address_hop2,
+                    { "Source/12, Delta",                         "6lowpan.src",
+                                                                                      FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+            { &hf_6lowpan_6lorhc_address_hop3,
+                    { "Source/8, Delta",                         "6lowpan.src",
+                                                                                      FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+            { &hf_6lowpan_6lorhc_address_hop4,
+                    { "Source/0 Delta",                         "6lowpan.src",
+                                                                                      FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+            { &hf_6lowpan_sender_rank1,
+                    { "Sender Rank",               "6lowpan.sender.rank",
+                                                                                      FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_sender_rank2,
+                    { "Sender Rank",               "6lowpan.sender.rank",
+                                                                                      FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_rpl_instance,
+                    { "RPL Instance",               "6lowpan.rpl.instance",
+                                                                                      FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_5_bit_o,
+                    { "Packet direction: UP false, DOWN true",   "6lowpan.5.bitO",
+                                                                                      FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_O, NULL, HFILL }},
+            { &hf_6lowpan_5_bit_r,
+                    { "Error detected",   "6lowpan.5.bitR",
+                                                                                      FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_R, NULL, HFILL }},
+            { &hf_6lowpan_5_bit_f,
+                    { "No link to destination",   "6lowpan.5.bitF",
+                                                                                      FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_F, NULL, HFILL }},
+            { &hf_6lowpan_5_bit_i,
+                    { "Context identifier extension",   "6lowpan.iphc.cid",
+                                                                                      FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_I, NULL, HFILL }},
+            { &hf_6lowpan_5_bit_k,
+                    { "Context identifier extension",   "6lowpan.iphc.cid",
+                                                                                      FT_BOOLEAN, 16, NULL, LOWPAN_5_RPI_BIT_K, NULL, HFILL }},
+            { &hf_6lowpan_6lorhe_hoplimit,
+                    { "6loRH Hop Limit",               "6lowpan.rhhop.limit",
+                                                                                      FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_6lorhe_bitmap,
+                    { "6loRH BIER Bitmap",               "6lowpan.bitmap",
+                                                                                      FT_UINT32, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_6lorhe_type,
+                    { "6loRH Type",               "6lowpan.rhtype",
+                                                                                      FT_UINT16, BASE_HEX, VALS(lowpan_patterns_rh_type), LOWPAN_PATTERN_6LORHE_TYPE, NULL, HFILL }},
+            { &hf_6lowpan_6lorhc_size,
+                    { "6loRH Hop Number-1",               "6lowpan.HopNuevo",
+                                                                                      FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
+            { &hf_6lowpan_6lorhe_size,
+                    { "6loRH Bitmap Word Number-1",               "6lowpan.WordNuevo",
+                                                                                      FT_UINT16, BASE_HEX, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
+            { &hf_6lowpan_6lorhe_length,
+                    { "6loRH Elective Length",               "6lowpan.rhElength",
+                                                                                      FT_UINT16, BASE_DEC, NULL, LOWPAN_PATTERN_6LORHE_LENGTH, NULL, HFILL }},
+            { &hf_6lowpan_routing_header,
+                    { "Routing Header 6lo",               "6lowpan.routingheader",
+                                                                                      FT_UINT8, BASE_HEX, VALS(lowpan_patterns_rh), 0x0, NULL, HFILL }},
+            { &hf_6lowpan_pagenb,
+                    { "Page Number",                      "6lowpan.pagenb",
+                                                                                      FT_UINT16, 16, NULL, 0x0, NULL, HFILL }},
 
-        /* HC1 header fields. */
-        { &hf_6lowpan_hc1_encoding,
-          { "HC1 Encoding",                  "6lowpan.hc1.encoding",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_hc1_source_prefix,
-          { "Source prefix",                  "6lowpan.hc1.src_prefix",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_SOURCE_PREFIX, NULL, HFILL }},
-        { &hf_6lowpan_hc1_source_ifc,
-          { "Source interface",               "6lowpan.hc1.src_ifc",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_SOURCE_IFC, NULL, HFILL }},
-        { &hf_6lowpan_hc1_dest_prefix,
-          { "Destination prefix",             "6lowpan.hc1.dst_prefix",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_DEST_PREFIX, NULL, HFILL }},
-        { &hf_6lowpan_hc1_dest_ifc,
-          { "Destination interface",          "6lowpan.hc1.dst_ifc",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_DEST_IFC, NULL, HFILL }},
-        { &hf_6lowpan_hc1_class,
-          { "Traffic class and flow label",   "6lowpan.hc1.class",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_TRAFFIC_CLASS, NULL, HFILL }},
-        { &hf_6lowpan_hc1_next,
-          { "Next header",                    "6lowpan.hc1.next",
-            FT_UINT8, BASE_HEX, VALS(lowpan_hc1_next), LOWPAN_HC1_NEXT, NULL, HFILL }},
-        { &hf_6lowpan_hc1_more,
-          { "More HC bits",                   "6lowpan.hc1.more",
-            FT_BOOLEAN, 8, NULL, LOWPAN_HC1_MORE, NULL, HFILL }},
 
-        /* HC_UDP header fields. */
-        { &hf_6lowpan_hc2_udp_encoding,
-          { "HC_UDP Encoding",                    "6lowpan.hc2.udp.encoding",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_hc2_udp_src,
-          { "Source port",                    "6lowpan.hc2.udp.src",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC2_UDP_SRCPORT, NULL, HFILL }},
-        { &hf_6lowpan_hc2_udp_dst,
-          { "Destination port",               "6lowpan.hc2.udp.dst",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC2_UDP_DSTPORT, NULL, HFILL }},
-        { &hf_6lowpan_hc2_udp_len,
-          { "Length",                         "6lowpan.hc2.udp.length",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC2_UDP_LENGTH, NULL, HFILL }},
+            /* Common 6LoWPAN fields. */
+            { &hf_6lowpan_pattern,
+                    { "Pattern",                        "6lowpan.pattern",
+                                                                                      FT_UINT8, BASE_HEX, VALS(lowpan_patterns), 0x0, NULL, HFILL }},
+            { &hf_6lowpan_nhc_pattern,
+                    { "Pattern",                        "6lowpan.nhc.pattern",
+                                                                                      FT_UINT8, BASE_HEX, VALS(lowpan_nhc_patterns), 0x0, NULL, HFILL }},
 
-        /* IPHC header fields. */
-        { &hf_6lowpan_iphc_flag_tf,
-          { "Traffic class and flow label",   "6lowpan.iphc.tf",
-            FT_UINT16, BASE_HEX, VALS(lowpan_iphc_traffic), LOWPAN_IPHC_FLAG_FLOW, "traffic class and flow control encoding", HFILL }},
-        { &hf_6lowpan_iphc_flag_nhdr,
-          { "Next header",                    "6lowpan.iphc.nh",
-            FT_BOOLEAN, 16, TFS(&lowpan_compression), LOWPAN_IPHC_FLAG_NHDR, NULL, HFILL }},
-        { &hf_6lowpan_iphc_flag_hlim,
-          { "Hop limit",                      "6lowpan.iphc.hlim",
-            FT_UINT16, BASE_HEX, VALS(lowpan_iphc_hop_limit), LOWPAN_IPHC_FLAG_HLIM, NULL, HFILL }},
-        { &hf_6lowpan_iphc_flag_cid,
-          { "Context identifier extension",   "6lowpan.iphc.cid",
-            FT_BOOLEAN, 16, NULL, LOWPAN_IPHC_FLAG_CONTEXT_ID, NULL, HFILL }},
-        { &hf_6lowpan_iphc_flag_sac,
-          { "Source address compression",     "6lowpan.iphc.sac",
-            FT_BOOLEAN, 16, TFS(&lowpan_iphc_addr_compression), LOWPAN_IPHC_FLAG_SRC_COMP, NULL, HFILL }},
-        { &hf_6lowpan_iphc_flag_sam,
-          { "Source address mode",            "6lowpan.iphc.sam",
-            FT_UINT16, BASE_HEX, VALS(lowpan_iphc_addr_modes), LOWPAN_IPHC_FLAG_SRC_MODE, NULL, HFILL }},
-        { &hf_6lowpan_iphc_flag_mcast,
-          { "Multicast address compression",  "6lowpan.iphc.m",
-            FT_BOOLEAN, 16, NULL, LOWPAN_IPHC_FLAG_MCAST_COMP, NULL, HFILL }},
-        { &hf_6lowpan_iphc_flag_dac,
-          { "Destination address compression","6lowpan.iphc.dac",
-            FT_BOOLEAN, 16, TFS(&lowpan_iphc_addr_compression), LOWPAN_IPHC_FLAG_DST_COMP, NULL, HFILL }},
-        { &hf_6lowpan_iphc_flag_dam,
-          { "Destination address mode",       "6lowpan.iphc.dam",
-            FT_UINT16, BASE_HEX, VALS(lowpan_iphc_addr_modes), LOWPAN_IPHC_FLAG_DST_MODE, NULL, HFILL }},
-        { &hf_6lowpan_iphc_sci,
-          { "Source context identifier",      "6lowpan.iphc.sci",
-            FT_UINT8, BASE_HEX, NULL, LOWPAN_IPHC_FLAG_SCI, NULL, HFILL }},
-        { &hf_6lowpan_iphc_dci,
-          { "Destination context identifier", "6lowpan.iphc.dci",
-            FT_UINT8, BASE_HEX, NULL, LOWPAN_IPHC_FLAG_DCI, NULL, HFILL }},
+            /* HC1 header fields. */
+            { &hf_6lowpan_hc1_encoding,
+                    { "HC1 Encoding",                  "6lowpan.hc1.encoding",
+                                                                                      FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_hc1_source_prefix,
+                    { "Source prefix",                  "6lowpan.hc1.src_prefix",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_SOURCE_PREFIX, NULL, HFILL }},
+            { &hf_6lowpan_hc1_source_ifc,
+                    { "Source interface",               "6lowpan.hc1.src_ifc",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_SOURCE_IFC, NULL, HFILL }},
+            { &hf_6lowpan_hc1_dest_prefix,
+                    { "Destination prefix",             "6lowpan.hc1.dst_prefix",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_DEST_PREFIX, NULL, HFILL }},
+            { &hf_6lowpan_hc1_dest_ifc,
+                    { "Destination interface",          "6lowpan.hc1.dst_ifc",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_DEST_IFC, NULL, HFILL }},
+            { &hf_6lowpan_hc1_class,
+                    { "Traffic class and flow label",   "6lowpan.hc1.class",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC1_TRAFFIC_CLASS, NULL, HFILL }},
+            { &hf_6lowpan_hc1_next,
+                    { "Next header",                    "6lowpan.hc1.next",
+                                                                                      FT_UINT8, BASE_HEX, VALS(lowpan_hc1_next), LOWPAN_HC1_NEXT, NULL, HFILL }},
+            { &hf_6lowpan_hc1_more,
+                    { "More HC bits",                   "6lowpan.hc1.more",
+                                                                                      FT_BOOLEAN, 8, NULL, LOWPAN_HC1_MORE, NULL, HFILL }},
 
-        /* Context information fields. */
-        { &hf_6lowpan_iphc_sctx_prefix,
-        { "Source context",                   "6lowpan.iphc.sctx.prefix", FT_IPv6, BASE_NONE, NULL, 0x0,
-            NULL, HFILL }},
-        { &hf_6lowpan_iphc_sctx_origin,
-        { "Origin",                           "6lowpan.iphc.sctx.origin", FT_FRAMENUM, BASE_NONE, NULL, 0x0,
-            NULL, HFILL }},
-        { &hf_6lowpan_iphc_dctx_prefix,
-        { "Destination context",              "6lowpan.iphc.dctx.prefix", FT_IPv6, BASE_NONE, NULL, 0x0,
-            NULL, HFILL }},
-        { &hf_6lowpan_iphc_dctx_origin,
-        { "Origin",                           "6lowpan.iphc.dctx.origin", FT_FRAMENUM, BASE_NONE, NULL, 0x0,
-            NULL, HFILL }},
+            /* HC_UDP header fields. */
+            { &hf_6lowpan_hc2_udp_encoding,
+                    { "HC_UDP Encoding",                    "6lowpan.hc2.udp.encoding",
+                                                                                      FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_hc2_udp_src,
+                    { "Source port",                    "6lowpan.hc2.udp.src",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC2_UDP_SRCPORT, NULL, HFILL }},
+            { &hf_6lowpan_hc2_udp_dst,
+                    { "Destination port",               "6lowpan.hc2.udp.dst",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC2_UDP_DSTPORT, NULL, HFILL }},
+            { &hf_6lowpan_hc2_udp_len,
+                    { "Length",                         "6lowpan.hc2.udp.length",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_HC2_UDP_LENGTH, NULL, HFILL }},
 
-        /* NHC IPv6 extension header fields. */
-        { &hf_6lowpan_nhc_ext_eid,
-          { "Header ID",                      "6lowpan.nhc.ext.eid",
-            FT_UINT8, BASE_HEX, VALS(lowpan_nhc_eid), LOWPAN_NHC_EXT_EID, NULL, HFILL }},
-        { &hf_6lowpan_nhc_ext_nh,
-          { "Next header",                    "6lowpan.nhc.ext.nh",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_NHC_EXT_NHDR, NULL, HFILL }},
-        { &hf_6lowpan_nhc_ext_next,
-          { "Next header",                    "6lowpan.nhc.ext.next",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_nhc_ext_length,
-          { "Header length",                  "6lowpan.nhc.ext.length",
-            FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            /* IPHC header fields. */
+            { &hf_6lowpan_iphc_flag_tf,
+                    { "Traffic class and flow label",   "6lowpan.iphc.tf",
+                                                                                      FT_UINT16, BASE_HEX, VALS(lowpan_iphc_traffic), LOWPAN_IPHC_FLAG_FLOW, "traffic class and flow control encoding", HFILL }},
+            { &hf_6lowpan_iphc_flag_nhdr,
+                    { "Next header",                    "6lowpan.iphc.nh",
+                                                                                      FT_BOOLEAN, 16, TFS(&lowpan_compression), LOWPAN_IPHC_FLAG_NHDR, NULL, HFILL }},
+            { &hf_6lowpan_iphc_flag_hlim,
+                    { "Hop limit",                      "6lowpan.iphc.hlim",
+                                                                                      FT_UINT16, BASE_HEX, VALS(lowpan_iphc_hop_limit), LOWPAN_IPHC_FLAG_HLIM, NULL, HFILL }},
+            { &hf_6lowpan_iphc_flag_cid,
+                    { "Context identifier extension",   "6lowpan.iphc.cid",
+                                                                                      FT_BOOLEAN, 16, NULL, LOWPAN_IPHC_FLAG_CONTEXT_ID, NULL, HFILL }},
+            { &hf_6lowpan_iphc_flag_sac,
+                    { "Source address compression",     "6lowpan.iphc.sac",
+                                                                                      FT_BOOLEAN, 16, TFS(&lowpan_iphc_addr_compression), LOWPAN_IPHC_FLAG_SRC_COMP, NULL, HFILL }},
+            { &hf_6lowpan_iphc_flag_sam,
+                    { "Source address mode",            "6lowpan.iphc.sam",
+                                                                                      FT_UINT16, BASE_HEX, VALS(lowpan_iphc_addr_modes), LOWPAN_IPHC_FLAG_SRC_MODE, NULL, HFILL }},
+            { &hf_6lowpan_iphc_flag_mcast,
+                    { "Multicast address compression",  "6lowpan.iphc.m",
+                                                                                      FT_BOOLEAN, 16, NULL, LOWPAN_IPHC_FLAG_MCAST_COMP, NULL, HFILL }},
+            { &hf_6lowpan_iphc_flag_dac,
+                    { "Destination address compression","6lowpan.iphc.dac",
+                                                                                      FT_BOOLEAN, 16, TFS(&lowpan_iphc_addr_compression), LOWPAN_IPHC_FLAG_DST_COMP, NULL, HFILL }},
+            { &hf_6lowpan_iphc_flag_dam,
+                    { "Destination address mode",       "6lowpan.iphc.dam",
+                                                                                      FT_UINT16, BASE_HEX, VALS(lowpan_iphc_addr_modes), LOWPAN_IPHC_FLAG_DST_MODE, NULL, HFILL }},
+            { &hf_6lowpan_iphc_sci,
+                    { "Source context identifier",      "6lowpan.iphc.sci",
+                                                                                      FT_UINT8, BASE_HEX, NULL, LOWPAN_IPHC_FLAG_SCI, NULL, HFILL }},
+            { &hf_6lowpan_iphc_dci,
+                    { "Destination context identifier", "6lowpan.iphc.dci",
+                                                                                      FT_UINT8, BASE_HEX, NULL, LOWPAN_IPHC_FLAG_DCI, NULL, HFILL }},
 
-        /* NHC UDP header fields. */
-        { &hf_6lowpan_nhc_udp_checksum,
-          { "Checksum",                       "6lowpan.nhc.udp.checksum",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_NHC_UDP_CHECKSUM, NULL, HFILL }},
-        { &hf_6lowpan_nhc_udp_src,
-          { "Source port",                    "6lowpan.nhc.udp.src",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_NHC_UDP_SRCPORT, NULL, HFILL }},
-        { &hf_6lowpan_nhc_udp_dst,
-          { "Destination port",               "6lowpan.nhc.udp.dst",
-            FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_NHC_UDP_DSTPORT, NULL, HFILL }},
+            /* Context information fields. */
+            { &hf_6lowpan_iphc_sctx_prefix,
+                    { "Source context",                   "6lowpan.iphc.sctx.prefix", FT_IPv6, BASE_NONE, NULL, 0x0,
+                            NULL, HFILL }},
+            { &hf_6lowpan_iphc_sctx_origin,
+                    { "Origin",                           "6lowpan.iphc.sctx.origin", FT_FRAMENUM, BASE_NONE, NULL, 0x0,
+                            NULL, HFILL }},
+            { &hf_6lowpan_iphc_dctx_prefix,
+                    { "Destination context",              "6lowpan.iphc.dctx.prefix", FT_IPv6, BASE_NONE, NULL, 0x0,
+                            NULL, HFILL }},
+            { &hf_6lowpan_iphc_dctx_origin,
+                    { "Origin",                           "6lowpan.iphc.dctx.origin", FT_FRAMENUM, BASE_NONE, NULL, 0x0,
+                            NULL, HFILL }},
 
-        /* Uncompressed IPv6 fields. */
-        { &hf_6lowpan_traffic_class,
-          { "Traffic class",                  "6lowpan.class",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_flow_label,
-          { "Flow label",                     "6lowpan.flow",
-            FT_UINT32, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_ecn,
-          { "ECN",                            "6lowpan.ecn",
-            FT_UINT8, BASE_HEX, NULL, LOWPAN_IPHC_TRAFFIC_ECN, NULL, HFILL }},
-        { &hf_6lowpan_dscp,
-          { "DSCP",                           "6lowpan.dscp",
-            FT_UINT8, BASE_HEX, NULL, LOWPAN_IPHC_TRAFFIC_DSCP, NULL, HFILL }},
-        { &hf_6lowpan_next_header,
-          { "Next header",                    "6lowpan.next",
-            FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_hop_limit,
-          { "Hop limit",                      "6lowpan.hops",
-            FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_source,
-          { "Source",                         "6lowpan.src",
-            FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
-        { &hf_6lowpan_dest,
-          { "Destination",                    "6lowpan.dst",
-            FT_IPv6, BASE_NONE, NULL, 0x0, "Destination IPv6 address", HFILL }},
+            /* NHC IPv6 extension header fields. */
+            { &hf_6lowpan_nhc_ext_eid,
+                    { "Header ID",                      "6lowpan.nhc.ext.eid",
+                                                                                      FT_UINT8, BASE_HEX, VALS(lowpan_nhc_eid), LOWPAN_NHC_EXT_EID, NULL, HFILL }},
+            { &hf_6lowpan_nhc_ext_nh,
+                    { "Next header",                    "6lowpan.nhc.ext.nh",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_NHC_EXT_NHDR, NULL, HFILL }},
+            { &hf_6lowpan_nhc_ext_next,
+                    { "Next header",                    "6lowpan.nhc.ext.next",
+                                                                                      FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_nhc_ext_length,
+                    { "Header length",                  "6lowpan.nhc.ext.length",
+                                                                                      FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
 
-        /* Uncompressed UDP fields. */
-        { &hf_6lowpan_udp_src,
-          { "Source port",                    "6lowpan.udp.src",
-            FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_udp_dst,
-          { "Destination port",               "6lowpan.udp.dst",
-            FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_udp_len,
-          { "UDP length",                     "6lowpan.udp.length",
-            FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_udp_checksum,
-          { "UDP checksum",                   "6lowpan.udp.checksum",
-            FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            /* NHC UDP header fields. */
+            { &hf_6lowpan_nhc_udp_checksum,
+                    { "Checksum",                       "6lowpan.nhc.udp.checksum",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_NHC_UDP_CHECKSUM, NULL, HFILL }},
+            { &hf_6lowpan_nhc_udp_src,
+                    { "Source port",                    "6lowpan.nhc.udp.src",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_NHC_UDP_SRCPORT, NULL, HFILL }},
+            { &hf_6lowpan_nhc_udp_dst,
+                    { "Destination port",               "6lowpan.nhc.udp.dst",
+                                                                                      FT_BOOLEAN, 8, TFS(&lowpan_compression), LOWPAN_NHC_UDP_DSTPORT, NULL, HFILL }},
 
-        /* Broadcast header fields. */
-        { &hf_6lowpan_bcast_seqnum,
-          { "Sequence number",                "6lowpan.bcast.seqnum",
-            FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            /* Uncompressed IPv6 fields. */
+            { &hf_6lowpan_traffic_class,
+                    { "Traffic class",                  "6lowpan.class",
+                                                                                      FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_flow_label,
+                    { "Flow label",                     "6lowpan.flow",
+                                                                                      FT_UINT32, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_ecn,
+                    { "ECN",                            "6lowpan.ecn",
+                                                                                      FT_UINT8, BASE_HEX, NULL, LOWPAN_IPHC_TRAFFIC_ECN, NULL, HFILL }},
+            { &hf_6lowpan_dscp,
+                    { "DSCP",                           "6lowpan.dscp",
+                                                                                      FT_UINT8, BASE_HEX, NULL, LOWPAN_IPHC_TRAFFIC_DSCP, NULL, HFILL }},
+            { &hf_6lowpan_next_header,
+                    { "Next header",                    "6lowpan.next",
+                                                                                      FT_UINT8, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_hop_limit,
+                    { "Hop limit",                      "6lowpan.hops",
+                                                                                      FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_source,
+                    { "Source",                         "6lowpan.src",
+                                                                                      FT_IPv6, BASE_NONE, NULL, 0x0, "Source IPv6 address", HFILL }},
+            { &hf_6lowpan_dest,
+                    { "Destination",                    "6lowpan.dst",
+                                                                                      FT_IPv6, BASE_NONE, NULL, 0x0, "Destination IPv6 address", HFILL }},
 
-        /* Mesh header fields. */
-        { &hf_6lowpan_mesh_v,
-          { "V",                              "6lowpan.mesh.v",
-            FT_BOOLEAN, 8, NULL, LOWPAN_MESH_HEADER_V, "short originator address present", HFILL }},
-        { &hf_6lowpan_mesh_f,
-          { "D",                              "6lowpan.mesh.f",
-            FT_BOOLEAN, 8, NULL, LOWPAN_MESH_HEADER_F, "short destination address present", HFILL }},
-        { &hf_6lowpan_mesh_hops,
-          { "Hops left",                      "6lowpan.mesh.hops",
-            FT_UINT8, BASE_DEC, NULL, LOWPAN_MESH_HEADER_HOPS, NULL, HFILL }},
-        { &hf_6lowpan_mesh_hops8,
-          { "Deep Hops left (Flags.Hops left == 15)", "6lowpan.mesh.hops8",
-            FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_mesh_orig16,
-          { "Originator",                     "6lowpan.mesh.orig16",
-            FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_mesh_orig64,
-          { "Originator",                     "6lowpan.mesh.orig64",
-            FT_UINT64, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_mesh_dest16,
-          { "Destination",                    "6lowpan.mesh.dest16",
-            FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_mesh_dest64,
-          { "Destination",                    "6lowpan.mesh.dest64",
-            FT_UINT64, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            /* Uncompressed UDP fields. */
+            { &hf_6lowpan_udp_src,
+                    { "Source port",                    "6lowpan.udp.src",
+                                                                                      FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_udp_dst,
+                    { "Destination port",               "6lowpan.udp.dst",
+                                                                                      FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_udp_len,
+                    { "UDP length",                     "6lowpan.udp.length",
+                                                                                      FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_udp_checksum,
+                    { "UDP checksum",                   "6lowpan.udp.checksum",
+                                                                                      FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
 
-        /* Fragmentation header fields. */
-        { &hf_6lowpan_frag_dgram_size,
-          { "Datagram size",                  "6lowpan.frag.size",
-            FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_frag_dgram_tag,
-          { "Datagram tag",                   "6lowpan.frag.tag",
-            FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
-        { &hf_6lowpan_frag_dgram_offset,
-          { "Datagram offset",                "6lowpan.frag.offset",
-            FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            /* Broadcast header fields. */
+            { &hf_6lowpan_bcast_seqnum,
+                    { "Sequence number",                "6lowpan.bcast.seqnum",
+                                                                                      FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
 
-        /* Reassembly fields. */
-        { &hf_6lowpan_fragments,
-          { "Message fragments",              "6lowpan.fragments",
-            FT_NONE, BASE_NONE, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_fragment,
-          { "Message fragment",               "6lowpan.fragment",
-            FT_FRAMENUM, BASE_NONE, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_fragment_overlap,
-          { "Message fragment overlap",       "6lowpan.fragment.overlap",
-            FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_fragment_overlap_conflicts,
-          { "Message fragment overlapping with conflicting data", "6lowpan.fragment.overlap.conflicts",
-            FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_fragment_multiple_tails,
-          { "Message has multiple tail fragments", "6lowpan.fragment.multiple_tails",
-            FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_fragment_too_long_fragment,
-          { "Message fragment too long",      "6lowpan.fragment.too_long_fragment",
-            FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_fragment_error,
-          { "Message defragmentation error",  "6lowpan.fragment.error",
-            FT_FRAMENUM, BASE_NONE, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_fragment_count,
-          { "Message fragment count",         "6lowpan.fragment.count",
-            FT_UINT32, BASE_DEC, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_reassembled_in,
-          { "Reassembled in",                 "6lowpan.reassembled.in",
-            FT_FRAMENUM, BASE_NONE, NULL, 0x00, NULL, HFILL }},
-        { &hf_6lowpan_reassembled_length,
-          { "Reassembled 6LoWPAN length",     "6lowpan.reassembled.length",
-            FT_UINT32, BASE_DEC, NULL, 0x00, NULL, HFILL }}
+            /* Mesh header fields. */
+            { &hf_6lowpan_mesh_v,
+                    { "V",                              "6lowpan.mesh.v",
+                                                                                      FT_BOOLEAN, 8, NULL, LOWPAN_MESH_HEADER_V, "short originator address present", HFILL }},
+            { &hf_6lowpan_mesh_f,
+                    { "D",                              "6lowpan.mesh.f",
+                                                                                      FT_BOOLEAN, 8, NULL, LOWPAN_MESH_HEADER_F, "short destination address present", HFILL }},
+            { &hf_6lowpan_mesh_hops,
+                    { "Hops left",                      "6lowpan.mesh.hops",
+                                                                                      FT_UINT8, BASE_DEC, NULL, LOWPAN_MESH_HEADER_HOPS, NULL, HFILL }},
+            { &hf_6lowpan_mesh_hops8,
+                    { "Deep Hops left (Flags.Hops left == 15)", "6lowpan.mesh.hops8",
+                                                                                      FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_mesh_orig16,
+                    { "Originator",                     "6lowpan.mesh.orig16",
+                                                                                      FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_mesh_orig64,
+                    { "Originator",                     "6lowpan.mesh.orig64",
+                                                                                      FT_UINT64, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_mesh_dest16,
+                    { "Destination",                    "6lowpan.mesh.dest16",
+                                                                                      FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_mesh_dest64,
+                    { "Destination",                    "6lowpan.mesh.dest64",
+                                                                                      FT_UINT64, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+
+            /* Fragmentation header fields. */
+            { &hf_6lowpan_frag_dgram_size,
+                    { "Datagram size",                  "6lowpan.frag.size",
+                                                                                      FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_frag_dgram_tag,
+                    { "Datagram tag",                   "6lowpan.frag.tag",
+                                                                                      FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &hf_6lowpan_frag_dgram_offset,
+                    { "Datagram offset",                "6lowpan.frag.offset",
+                                                                                      FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+
+            /* Reassembly fields. */
+            { &hf_6lowpan_fragments,
+                    { "Message fragments",              "6lowpan.fragments",
+                                                                                      FT_NONE, BASE_NONE, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_fragment,
+                    { "Message fragment",               "6lowpan.fragment",
+                                                                                      FT_FRAMENUM, BASE_NONE, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_fragment_overlap,
+                    { "Message fragment overlap",       "6lowpan.fragment.overlap",
+                                                                                      FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_fragment_overlap_conflicts,
+                    { "Message fragment overlapping with conflicting data", "6lowpan.fragment.overlap.conflicts",
+                                                                                      FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_fragment_multiple_tails,
+                    { "Message has multiple tail fragments", "6lowpan.fragment.multiple_tails",
+                                                                                      FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_fragment_too_long_fragment,
+                    { "Message fragment too long",      "6lowpan.fragment.too_long_fragment",
+                                                                                      FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_fragment_error,
+                    { "Message defragmentation error",  "6lowpan.fragment.error",
+                                                                                      FT_FRAMENUM, BASE_NONE, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_fragment_count,
+                    { "Message fragment count",         "6lowpan.fragment.count",
+                                                                                      FT_UINT32, BASE_DEC, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_reassembled_in,
+                    { "Reassembled in",                 "6lowpan.reassembled.in",
+                                                                                      FT_FRAMENUM, BASE_NONE, NULL, 0x00, NULL, HFILL }},
+            { &hf_6lowpan_reassembled_length,
+                    { "Reassembled 6LoWPAN length",     "6lowpan.reassembled.length",
+                                                                                      FT_UINT32, BASE_DEC, NULL, 0x00, NULL, HFILL }}
     };
 
     static gint *ett[] = {
-        &ett_6lowpan,
-        &ett_6lowpan_hc1,
-        &ett_6lowpan_hc1_encoding,
-        &ett_6lowpan_hc2_udp,
-        &ett_6lowpan_iphc,
-        &ett_lowpan_routing_header_dispatch, /* Jonathan */
-        &ett_6lowpan_nhc_ext,
-        &ett_6lowpan_nhc_udp,
-        &ett_6lowpan_bcast,
-        &ett_6lowpan_mesh,
-        &ett_6lowpan_mesh_flags,
-        &ett_6lowpan_frag,
-        &ett_6lopwan_traffic_class,
-        /* Reassembly subtrees. */
-        &ett_6lowpan_fragment,
-        &ett_6lowpan_fragments
+            &ett_6lowpan,
+            &ett_6lowpan_hc1,
+            &ett_6lowpan_hc1_encoding,
+            &ett_6lowpan_hc2_udp,
+            &ett_6lowpan_iphc,
+            &ett_lowpan_routing_header_dispatch, /* Jonathan */
+            &ett_6lowpan_nhc_ext,
+            &ett_6lowpan_nhc_udp,
+            &ett_6lowpan_bcast,
+            &ett_6lowpan_mesh,
+            &ett_6lowpan_mesh_flags,
+            &ett_6lowpan_frag,
+            &ett_6lopwan_traffic_class,
+            /* Reassembly subtrees. */
+            &ett_6lowpan_fragment,
+            &ett_6lowpan_fragments
     };
 
     static ei_register_info ei[] = {
-        { &ei_6lowpan_hc1_more_bits, { "6lowpan.hc1_more_bits", PI_MALFORMED, PI_ERROR, "HC1 more bits expected for illegal next header type.", EXPFILL }},
-        { &ei_6lowpan_illegal_dest_addr_mode, { "6lowpan.illegal_dest_addr_mode", PI_MALFORMED, PI_ERROR, "Illegal destination address mode", EXPFILL }},
-        { &ei_6lowpan_bad_ipv6_header_length, { "6lowpan.bad_ipv6_header_length", PI_MALFORMED, PI_ERROR, "Length is less than IPv6 header length", EXPFILL }},
-        { &ei_6lowpan_bad_ext_header_length, { "6lowpan.bad_ext_header_length", PI_MALFORMED, PI_ERROR, "Extension header not 8-octet aligned", EXPFILL }},
+            { &ei_6lowpan_hc1_more_bits, { "6lowpan.hc1_more_bits", PI_MALFORMED, PI_ERROR, "HC1 more bits expected for illegal next header type.", EXPFILL }},
+            { &ei_6lowpan_illegal_dest_addr_mode, { "6lowpan.illegal_dest_addr_mode", PI_MALFORMED, PI_ERROR, "Illegal destination address mode", EXPFILL }},
+            { &ei_6lowpan_bad_ipv6_header_length, { "6lowpan.bad_ipv6_header_length", PI_MALFORMED, PI_ERROR, "Length is less than IPv6 header length", EXPFILL }},
+            { &ei_6lowpan_bad_ext_header_length, { "6lowpan.bad_ext_header_length", PI_MALFORMED, PI_ERROR, "Extension header not 8-octet aligned", EXPFILL }},
     };
 
     int         i;
@@ -3286,8 +3321,8 @@ proto_register_6lowpan(void)
         pref_name  = wmem_strdup_printf(wmem_epan_scope(), "context%d", i);
         pref_title = wmem_strdup_printf(wmem_epan_scope(), "Context %d", i);
         prefs_register_string_preference(prefs_module, pref_name, pref_title,
-            "IPv6 prefix to use for stateful address decompression.",
-            &lowpan_context_prefs[i]);
+                                         "IPv6 prefix to use for stateful address decompression.",
+                                         &lowpan_context_prefs[i]);
     }
 } /* proto_register_6lowpan */
 
