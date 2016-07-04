@@ -186,12 +186,12 @@ static void dissect_ieee802154_gtsreq       (tvbuff_t *, packet_info *, proto_tr
 static void dissect_ieee802154_h_inf_elem     (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *); 
 static void dissect_ieee802154_p_inf_elem     (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *); 
 static void dissect_ieee802154_p_inf_elem_mlme (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *);
-//static void dissect_ieee802154_p_inf_elem_mlme_content (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *);
+/*static void dissect_ieee802154_p_inf_elem_mlme_content (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *);*/
 static void dissect_ieee802154_p_inf_elem_6top    (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *); 
 static void dissect_802154_h_ie_time_correction (tvbuff_t *, proto_tree *, ieee802154_packet *, guint *);
 static void dissect_802154_p_ie_sh_mlme_tsch_sync (tvbuff_t *, proto_tree *, ieee802154_packet *, guint *);
 static void dissect_802154_p_ie_sh_mlme_tsch_slotframe_link (tvbuff_t *, proto_tree *, ieee802154_packet *, guint *);
-//static void dissect_802154_p_ie_sh_mlme_slotfr_link (tvbuff_t *, proto_tree *, ieee802154_packet *, guint *);
+/*static void dissect_802154_p_ie_sh_mlme_slotfr_link (tvbuff_t *, proto_tree *, ieee802154_packet *, guint *);*/
 static void dissect_802154_p_ie_lg_mlme_channel_hopping (tvbuff_t *, packet_info *, proto_tree *, ieee802154_packet *, guint *);
 /* Get the size of the MAC HEADER */
 int size_header (ieee802154_packet *packet);
@@ -461,22 +461,22 @@ static const value_string ieee802154_h_information_elements[] = {
 };
 
 static const value_string ieee802154_h_information_elements_defined[] = {
- //   { IEEE802154_H_IE_DA_IE_VENDOR_SPECIFIC_HEADER, "DA IE Vendor Specific Header IE" },
- //   { IEEE802154_H_IE_DA, "DA IE" },
- //   { IEEE802154_H_IE_CSL, "CSL IE" },
- //   { IEEE802154_H_IE_RIT, "RIT IE" },
- //   { IEEE802154_H_IE_DSME_PAN_DESC, "DSME PAN descriptor IE" },
- //   { IEEE802154_H_IE_RDV_TIME, "Rendezvous Time IE" },
+ /*   { IEEE802154_H_IE_DA_IE_VENDOR_SPECIFIC_HEADER, "DA IE Vendor Specific Header IE" },*/
+ /*   { IEEE802154_H_IE_DA, "DA IE" },*/
+ /*   { IEEE802154_H_IE_CSL, "CSL IE" },*/
+ /*   { IEEE802154_H_IE_RIT, "RIT IE" },*/
+ /*   { IEEE802154_H_IE_DSME_PAN_DESC, "DSME PAN descriptor IE" },*/
+ /*   { IEEE802154_H_IE_RDV_TIME, "Rendezvous Time IE" },*/
     { IEEE802154_H_IE_TIME_CORRECTION, "Time Correction IE" },
- //   { IEEE802154_H_IE_EXT_DSME_PAN_DESC, "Extended DSME PAN descriptor IE" },
- //   { IEEE802154_H_IE_FSCD, "Fragment Sequence Context Description (FSCD) IE" },
- //   { IEEE802154_H_IE_SIMPL_SF_SPEC, "Simplified Superframe Specification IE" },
- //   { IEEE802154_H_IE_SIMPL_GTS, "Simplified GTS Specification IE" },
- //   { IEEE802154_H_IE_LECIM_CAPAB, "LECIM Capabilities IE" },
- //   { IEEE802154_H_IE_TRLE_DESC, "TRLE Descriptor" },
- //   { IEEE802154_H_IE_RCC_CAPAB, "RCC Capabilities IE" },
- //   { IEEE802154_H_IE_RCCN_DESC, "RCCN Descriptor IE"},
- //   { IEEE802154_H_IE_GLOBAL_TIME, "Global Time IE" },
+ /*   { IEEE802154_H_IE_EXT_DSME_PAN_DESC, "Extended DSME PAN descriptor IE" },*/
+ /*   { IEEE802154_H_IE_FSCD, "Fragment Sequence Context Description (FSCD) IE" },*/
+ /*   { IEEE802154_H_IE_SIMPL_SF_SPEC, "Simplified Superframe Specification IE" },*/
+ /*   { IEEE802154_H_IE_SIMPL_GTS, "Simplified GTS Specification IE" },*/
+ /*   { IEEE802154_H_IE_LECIM_CAPAB, "LECIM Capabilities IE" },*/
+ /*   { IEEE802154_H_IE_TRLE_DESC, "TRLE Descriptor" },*/
+ /*   { IEEE802154_H_IE_RCC_CAPAB, "RCC Capabilities IE" },*/
+ /*   { IEEE802154_H_IE_RCCN_DESC, "RCCN Descriptor IE"},*/
+ /*   { IEEE802154_H_IE_GLOBAL_TIME, "Global Time IE" },*/
     { IEEE802154_H_IE_HDR_TERM_1, "Header Termination 1 IE" },
     { IEEE802154_H_IE_HDR_TERM_2, "Header Termination 2 IE" },
     { 0, NULL }
@@ -517,32 +517,32 @@ static const value_string ieee802154_h_mlme_sub_short_information_elements[] = {
 static const value_string ieee802154_h_mlme_sub_short_information_elements_defined[] = {
     { IEEE802154_P_IE_TSCH_SYNC_SH, "TSCH Synchronization IE" },
     { IEEE802154_P_IE_TSCH_SLOTFR_LINK_SH, "TSCH Slotframe and Link IE" },
-    //{ IEEE802154_P_IE_TSCH_TIMESLOT_SH, "TSCH Timeslot IE" },
-    //{ IEEE802154_P_IE_HOPPING_TIMING_SH, "Hopping timing IE" },
-    //{ IEEE802154_P_IE_ENHACED_BEACON_FILTER_SH, "Enhaced Beacon Filter IE" },
-    //{ IEEE802154_P_IE_MAC_METRICS_SH, "MAC Metrics" },
-    //{ IEEE802154_P_IE_ALL_MAC_METRICS_SH, "All MAC Metrics IE" },
-    //{ IEEE802154_P_IE_COEXISTENCE_SPEC_SH, "Coexistence Specification IE" },
-    //{ IEEE802154_P_IE_SUN_DEVICE_CAPABILITIES_SH, "SUN Device Capabilities IE" },
-    //{ IEEE802154_P_IE_SUN_FSK_GEN_PHY_SH, "SUN FSK Generic PHY IE" },
-    //{ IEEE802154_P_IE_MODE_SWITCH_PARAMETER_SH, "Mode Switch Parameter IE" },
-    //{ IEEE802154_P_IE_PHY_PARAMETER_CHANGE_SH, "PHY Parameter Change IE" },
-    //{ IEEE802154_P_IE_O_QPSK_PHY_MODE_SH, "O-QPSY PHY Mode IE" },
-    //{ IEEE802154_P_IE_PCA_ALLOCATION_SH, "PCA Allocation IE" },
-    //{ IEEE802154_P_IE_DSSS_OPER_MODE_SH, "DSSS Operating Mode IE"},
-    //{ IEEE802154_P_IE_FSK_OPER_MODE_SH, "FSK Operating Mode IE" },
-    //{ IEEE802154_P_IE_TVWS_PHY_OPE_MODE_SH, "TVWS PHY Operating Mode Description IE" },
-    //{ IEEE802154_P_IE_TVWS_DEVICE_CAPAB_SH, "TVWS Device Capabilities IE" },
-    //{ IEEE802154_P_IE_TVWS_DEVICE_CATEG_SH, "TVWS Device Category IE" },
-    //{ IEEE802154_P_IE_TVWS_DEVICE_IDENTIF_SH, "TVWS Device Identification IE" },
-    //{ IEEE802154_P_IE_TVWS_DEVICE_LOCATION_SH, "TVWS Device Location IE" },
-    //{ IEEE802154_P_IE_TVWS_CH_INFOR_QUERY_SH, "TVWS Channel Information Query IE" },
-    //{ IEEE802154_P_IE_TVWS_CH_INFOR_SOURCE_SH, "TVWS Channel Information Source IE" },
-    //{ IEEE802154_P_IE_CTM_SH, "CTM IE" },
-    //{ IEEE802154_P_IE_TIMESTAMP_SH, "Timestamp IE" },
-    //{ IEEE802154_P_IE_TIMESTAMP_DIFF_SH, "Timestamp Difference IE"},
-    //{ IEEE802154_P_IE_TMCP_SPECIFICATION_SH, "TMCTP Specification IE" },
-   //{ IEEE802154_P_IE_RCC_PHY_OPER_MODE_SH, "RCC PHY Operating Mode IE" },
+   /*{ IEEE802154_P_IE_TSCH_TIMESLOT_SH, "TSCH Timeslot IE" },*/
+   /* { IEEE802154_P_IE_HOPPING_TIMING_SH, "Hopping timing IE" },*/
+   /* { IEEE802154_P_IE_ENHACED_BEACON_FILTER_SH, "Enhaced Beacon Filter IE" },*/
+   /* { IEEE802154_P_IE_MAC_METRICS_SH, "MAC Metrics" },*/
+   /* { IEEE802154_P_IE_ALL_MAC_METRICS_SH, "All MAC Metrics IE" },*/
+   /* { IEEE802154_P_IE_COEXISTENCE_SPEC_SH, "Coexistence Specification IE" },*/
+   /* { IEEE802154_P_IE_SUN_DEVICE_CAPABILITIES_SH, "SUN Device Capabilities IE" },*/
+   /* { IEEE802154_P_IE_SUN_FSK_GEN_PHY_SH, "SUN FSK Generic PHY IE" },*/
+   /* { IEEE802154_P_IE_MODE_SWITCH_PARAMETER_SH, "Mode Switch Parameter IE" },*/
+   /* { IEEE802154_P_IE_PHY_PARAMETER_CHANGE_SH, "PHY Parameter Change IE" },*/
+   /* { IEEE802154_P_IE_O_QPSK_PHY_MODE_SH, "O-QPSY PHY Mode IE" },*/
+   /* { IEEE802154_P_IE_PCA_ALLOCATION_SH, "PCA Allocation IE" },*/
+   /* { IEEE802154_P_IE_DSSS_OPER_MODE_SH, "DSSS Operating Mode IE"},*/
+   /* { IEEE802154_P_IE_FSK_OPER_MODE_SH, "FSK Operating Mode IE" },*/
+   /* { IEEE802154_P_IE_TVWS_PHY_OPE_MODE_SH, "TVWS PHY Operating Mode Description IE" },*/
+   /* { IEEE802154_P_IE_TVWS_DEVICE_CAPAB_SH, "TVWS Device Capabilities IE" },*/
+   /* { IEEE802154_P_IE_TVWS_DEVICE_CATEG_SH, "TVWS Device Category IE" },*/
+   /* { IEEE802154_P_IE_TVWS_DEVICE_IDENTIF_SH, "TVWS Device Identification IE" },*/
+   /* { IEEE802154_P_IE_TVWS_DEVICE_LOCATION_SH, "TVWS Device Location IE" },*/
+   /* { IEEE802154_P_IE_TVWS_CH_INFOR_QUERY_SH, "TVWS Channel Information Query IE" },*/
+   /* { IEEE802154_P_IE_TVWS_CH_INFOR_SOURCE_SH, "TVWS Channel Information Source IE" },*/
+   /* { IEEE802154_P_IE_CTM_SH, "CTM IE" },*/
+   /* { IEEE802154_P_IE_TIMESTAMP_SH, "Timestamp IE" },*/
+   /* { IEEE802154_P_IE_TIMESTAMP_DIFF_SH, "Timestamp Difference IE"},*/
+   /* { IEEE802154_P_IE_TMCP_SPECIFICATION_SH, "TMCTP Specification IE" },*/
+   /* { IEEE802154_P_IE_RCC_PHY_OPER_MODE_SH, "RCC PHY Operating Mode IE" },*/
     { 0, NULL }
 };
 
@@ -568,7 +568,7 @@ static const value_string ieee802154_h_mlme_sub_long_information_elements[] = {
 };
 
 static const value_string ieee802154_h_mlme_sub_long_information_elements_defined[] = {
-   //{ IEEE802154_P_IE_VENDOR_SPECIFIC_LG, "Vendor Specific IE " },
+  /* //{ IEEE802154_P_IE_VENDOR_SPECIFIC_LG, "Vendor Specific IE " },*/
     { IEEE802154_P_IE_CHANNEL_HOPPING_LG, "Channel Hopping IE" },
     { 0, NULL }    
 };
@@ -706,9 +706,9 @@ int size_header (ieee802154_packet *packet) {
             THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT WITH THE BIT --PAN ID compression-- (packet->intra_pan)
             that's why the following 3 lines are commented
         */
-        //if (!packet->intra_pan){
+        /*//if (!packet->intra_pan){
         //    mac_header_size += 2;
-        //}
+        //}*/
         break;
     case IEEE802154_FCF_ADDR_EXT:
         mac_header_size += 8;
@@ -717,9 +717,9 @@ int size_header (ieee802154_packet *packet) {
             THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT WITH THE BIT --PAN ID compression-- (packet->intra_pan)
             that's why the following 3 lines are commented
         */
-        //if (!packet->intra_pan){
+        /*//if (!packet->intra_pan){
         //    mac_header_size += 2;
-        //}
+        //}*/
         break;
     default:
      
@@ -764,7 +764,7 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
 
     while (condition) {    
         guint16     header_ie;
-        //proto_tree *field_tree;
+        /*//proto_tree *field_tree;*/
         gint  reported_len;
         gint  captured_len;
         tvbuff_t  *volatile payload_tvb;
@@ -784,7 +784,8 @@ dissect_ieee802154_h_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
                         condition = FALSE;
         } 
         /* Display the frame type. */
-        proto_item_append_text(tree, " %s", val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown"));
+        /* JONATHAN */
+     /*   proto_item_append_text(tree, " %s", val_to_str_const(packet->h_ie_id, ieee802154_h_information_elements, "Unknown"));*/
         
         /* Add the Header Information Element's header to the protocol tree. */
         if (tree) {
@@ -931,7 +932,7 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
 
     while (condition) {    
         guint16     payload_ie;
-        //proto_tree *field_tree;
+        /*//proto_tree *field_tree;*/
         
         /* Get the information within the Information's Element header */ 
         payload_ie = tvb_get_letohs(tvb, *offset);
@@ -944,8 +945,10 @@ dissect_ieee802154_p_inf_elem(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         packet->keep_dissecting_p_ie -= (packet->p_ie_content_lenght + 2);
 
         /* Display the frame type. */
-        proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"));
+        /* JONATHAN */
+        /*proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_id, ieee802154_p_information_elements, "Unknown"));*/
         /* Add the Payload Information Element's header to the protocol tree. */
+        
         if (tree) {
             /*  Create the FCF subtree. */
             p_inf_elem_tree = proto_tree_add_subtree_format(tree, tvb, *offset, 2 + packet->p_ie_content_lenght, ett_ieee802154_p_ie, NULL,
@@ -1080,7 +1083,7 @@ dissect_ieee802154_p_inf_elem_6top(tvbuff_t *tvb, packet_info *pinfo, proto_tree
                 if ((ie_length == 0) || (ie_length >= 4)){
                     while (ie_length > 0){
                         proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_slotoffset, tvb, *offset, 2, tvb_get_letohs(tvb, *offset) &  0xFFFF);
-                        proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_choffset, tvb, *offset + 2, 2, tvb_get_letohs(tvb, *offset) &  0xFFFF);
+                        proto_tree_add_uint(p_inf_elem_tree_sixtop, hf_ieee802154_p_ie_sixp_choffset, tvb, *offset + 2, 2, tvb_get_letohs(tvb, *offset + 2) &  0xFFFF);
                         ie_length -= 4;
                         *offset += 4;
                     }
@@ -1136,7 +1139,7 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
         gint  reported_len;
         gint  captured_len;
         tvbuff_t  *volatile payload_tvb;
-        //proto_tree *field_tree;
+        /*//proto_tree *field_tree;*/
         mlme_header = tvb_get_letohs(tvb, *offset);
         packet->p_ie_mlme_type      = (mlme_header & IEEE802154_P_IE_TYPE) >> 15; 
     
@@ -1150,11 +1153,12 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
             if (packet->keep_dissecting >= packet->p_ie_content_lenght) {
                 conditionn = FALSE;
             }
-            proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"));
-            /*col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown"));*/
 
+        /* JONATHAN */
+        /*    proto_item_append_text(tree, " %s", val_to_str_const(packet->p_ie_mlme_lg_id, ieee802154_h_mlme_sub_long_information_elements, "Unknown")); */
+            
             if (tree) { 
-            	//proto_tree *field_tree_data_mlme;
+            	/*//proto_tree *field_tree_data_mlme;*/
             /*  Create the FCF subtree. */
                 p_inf_elem_tree_mlme = proto_tree_add_subtree_format(tree, tvb, *offset, packet->p_ie_mlme_lg_lenght + 2, ett_ieee802154_mlme_lg_p_ie, NULL,
                 "Long MLME Information Element: %s (0x%04x)",
@@ -1198,7 +1202,7 @@ dissect_ieee802154_p_inf_elem_mlme(tvbuff_t *tvb, packet_info *pinfo, proto_tree
             /*col_set_str(pinfo->cinfo, COL_INFO, val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements, "Unknown"));*/
 
             if (tree) {
-            	//proto_tree *field_tree_data_mlme;
+            	/*proto_tree *field_tree_data_mlme; */
             	/*  Create the FCF subtree. */
                 p_inf_elem_tree_mlme = proto_tree_add_subtree_format(tree, tvb, *offset, packet->p_ie_mlme_sh_lenght + 2, ett_ieee802154_mlme_sh_p_ie, NULL,
                 "Short MLME Information Element: %s (0x%04x)",
@@ -1305,22 +1309,27 @@ static void
 dissect_802154_p_ie_sh_mlme_tsch_sync(tvbuff_t *tvb, proto_tree *p_inf_elem_tree_mlme, ieee802154_packet *packet, guint *offset){
     guint64     payload;
     proto_tree *p_inf_elem_tree_mlme_payload = NULL;
-    //guint64     asn;
+    guint64     asn;
     guint8      join_p;
 
     payload = tvb_get_letoh64(tvb, *offset);
     payload = payload & 0x0000FFFFFFFFFFFF;
-    //asn     = (payload & 0x000000FFFFFFFFFF);
+    asn     = (payload & 0x000000FFFFFFFFFF);
     join_p  = tvb_get_guint8(tvb,*offset+5);
 
 
-    p_inf_elem_tree_mlme_payload = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, 6, ett_ieee802154_mlme_payload, NULL,
+    /*p_inf_elem_tree_mlme_payload = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, 6, ett_ieee802154_mlme_payload, NULL,
                 "Data: %s Content(0x%llx)",
-                val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements_defined, "Unknown"), (unsigned long long) payload);
+                val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements_defined, "Unknown"), (unsigned long long) payload);*/
+    p_inf_elem_tree_mlme_payload = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, 6, ett_ieee802154_mlme_payload, NULL,
+                "Data: %s Content %" G_GUINT64_FORMAT "\n",
+                val_to_str_const(packet->p_ie_mlme_sh_id, ieee802154_h_mlme_sub_short_information_elements_defined, "Unknown"), (unsigned long long) payload);            
 
     if (p_inf_elem_tree_mlme){
       
-        proto_tree_add_item(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn, tvb, (*offset), 5, ENC_LITTLE_ENDIAN);
+        proto_tree_add_item(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn, tvb, (*offset), 5, ENC_LITTLE_ENDIAN); 
+       /* proto_tree_add_uint64_format_value(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn, tvb, offset, 5,
+                                       asn, "%" G_GINT64_MODIFIER "u", asn);*/
         proto_tree_add_uint(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_join_p, tvb, (*offset)+5, 1, join_p);    
     }
     *offset += packet->p_ie_mlme_sh_lenght;
@@ -1357,10 +1366,10 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
     proto_tree *p_inf_elem_tree_mlme_payload_data = NULL;
     nb_slotframes       = tvb_get_guint8(tvb, *offset);
     nb_slotframes_aux   = nb_slotframes;
-    //tvbuff_t  *volatile payload_tvb;
+    /*tvbuff_t  *volatile payload_tvb;*/
     
     while ( nb_slotframes_aux > 0 ){
-     //   payload_tvb         = tvb_new_subset(tvb, *offset, captured_len, reported_len); 
+     /*   payload_tvb         = tvb_new_subset(tvb, *offset, captured_len, reported_len); */
         header_slotf_link   = tvb_get_letoh64(tvb, *offset);
         header_slotf_link   = header_slotf_link & 0x000000FFFFFFFFFF;
         slotframe_handle    = tvb_get_guint8(tvb, *offset+1);
@@ -1369,8 +1378,12 @@ dissect_802154_p_ie_sh_mlme_tsch_slotframe_link(tvbuff_t *tvb, proto_tree *p_inf
         nb_links_aux        = nb_links;
         
         p_inf_elem_tree_mlme_payload = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, packet->p_ie_mlme_sh_lenght, ett_ieee802154_mlme_payload, NULL,
-                    "Data: %s Content(0x%llx)",
+                    "Data: %s Content(%)" G_GUINT64_FORMAT "\n",
                     "Slotframe and Link IE", (unsigned long long) header_slotf_link);
+        /*p_inf_elem_tree_mlme_payload = proto_tree_add_subtree_format(p_inf_elem_tree_mlme, tvb, *offset, packet->p_ie_mlme_sh_lenght, ett_ieee802154_mlme_payload, NULL,
+                    "Data: %s Content(0x%llx)",
+                    "Slotframe and Link IE", (unsigned long long) header_slotf_link);*/
+        /*printf("My value: %" G_GUINT64_FORMAT "\n", myValue);*/
 
         if (p_inf_elem_tree_mlme){
             proto_tree_add_uint(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_slotf_link_nb_slotf, tvb, (*offset), 1, nb_slotframes);
@@ -1442,7 +1455,7 @@ dissect_802154_p_ie_lg_mlme_channel_hopping(tvbuff_t *tvb, packet_info *pinfo, p
     }
     if (packet->p_ie_mlme_lg_lenght > 1){
 
-        //proto_tree_add_item(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn, tvb, (*offset)+1, packet->p_ie_mlme_lg_lenght-1, );
+        /*proto_tree_add_item(p_inf_elem_tree_mlme_payload, hf_ieee802154_p_ie_mlme_sh_tsch_asn, tvb, (*offset)+1, packet->p_ie_mlme_lg_lenght-1, );*/
         call_dissector(data_handle, payload_tvb, pinfo, p_inf_elem_tree_mlme_payload);
 
     }
@@ -1559,7 +1572,7 @@ dissect_ieee802154_nofcs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
      * checks to ensure that the new reported length is not longer than the old
      * reported length (why?), and will throw an exception.
      */
-    new_tvb = tvb_new_subset(tvb, 0, -1, tvb_captured_length(tvb)+IEEE802154_FCS_LEN);
+    new_tvb = tvb_new_subset(tvb, 0, -1, tvb_reported_length(tvb)+IEEE802154_FCS_LEN);
     /* Call the common dissector. */
     dissect_ieee802154_common(new_tvb, pinfo, tree, 0);
 } /* dissect_ieee802154_nofcs */
@@ -1790,11 +1803,11 @@ dissect_ieee802154_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
         /* In order to match the technical discussions at the 6TiSCH plugtest telco on 2 July 2015:
      *      THERE WILL NOT BE ANY PAN ID SOURCE, NO MATTER WHAT THE BIT --PAN ID compression-- is (packet->intra_pan)
             that's why the following 5 lines are commented*/
-        //packet->src_pan = tvb_get_letohs(tvb, offset);
+        /*packet->src_pan = tvb_get_letohs(tvb, offset);
         //if (tree) {
         //    proto_tree_add_uint(ieee802154_tree, hf_ieee802154_src_panID, tvb, offset, 2, packet->src_pan);
         //}
-        //offset += 2;
+        //offset += 2;*/
     }
     /* Set the panID field in case the intra-pan condition was met. */
     else if (packet->dst_addr_mode != IEEE802154_FCF_ADDR_NONE) {
@@ -3554,7 +3567,7 @@ void proto_register_ieee802154(void)
             IEEE802154_P_MLME_SHORT_ID, NULL, HFILL }},   
 
         { &hf_ieee802154_p_ie_mlme_type,
-        { "MLME Information Element type (Short = FALSE - Long = TRUE) ",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_MLME_TYPE,
+        { "MLME Information Element type (Short = FALSE - Long = TRUE)",                  "wpan.p_ie_mlme_type", FT_BOOLEAN, 16, NULL, IEEE802154_P_MLME_TYPE,
             "Type 0 Short, Type 1 Long.", HFILL }}, 
 /* ---------------------------------Information Elements --------------------------------------------*/   
 
@@ -3589,7 +3602,7 @@ void proto_register_ieee802154(void)
         
 
         { &hf_ieee802154_p_ie_mlme_sh_tsch_asn,
-        { "Absolut Slot Number ",                   "wpan.p_ie_mlme_sh_asn", FT_UINT64, BASE_DEC, NULL, 0x0,
+        { "Absolute Slot Number",                   "wpan.p_ie_mlme_sh_asn", FT_UINT64, BASE_DEC, NULL, 0x0,
             NULL, HFILL }},      
    
         { &hf_ieee802154_p_ie_mlme_sh_tsch_join_p,
