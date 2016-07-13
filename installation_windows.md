@@ -95,3 +95,9 @@ Install wireshark 32-bit
 	The executable file is located at: `C:\Development\wsbuild32\run\RelWithDebInfo\Wireshark.exe`
 
 	The installer is located at: `C:\Development\wireshark\packaging\nsis\Wireshark-win32-2.0.3-6tisch.exe`
+
+- Artifacts built by OpenWSN builder
+
+	[Wireshark-win32-2.0.3-6tisch.exe](http://builder.openwsn.org/job/6TiSCH%20Wireshark/lastSuccessfulBuild/artifact/Wireshark-win32-2.0.3-6tisch.exe)
+	
+	[Wireshark-win64-2.0.3-6tisch.exe](http://builder.openwsn.org/job/6TiSCH%20Wireshark/lastSuccessfulBuild/artifact/Wireshark-win64-2.0.3-6tisch.exe "Wireshark-win64-2.0.3-6tisch.exe")
