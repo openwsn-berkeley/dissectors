@@ -8,6 +8,7 @@ These dissectors extend the Wireshark IEEE802.15.4 dissectors with the following
 * dissect all Information Elements used in draft-6tisch-minimal
 * dissect IP-in-IP encapsulation
 * dissect the 6lo Paging and Routing Dispatch in 6LoWPAN
+* dissect the 6P protocol frame defined in draft-ietf-6tisch-6top-protocol
 
 The source code of those dissectors is available as open-source code (BSD license). Although we are making final adjustments, you can use the code today. For now, you have to recompile Wireshark (instructions below); we will work on submitting this code to the Wireshark project once we are finished.
 
