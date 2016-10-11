@@ -8,7 +8,7 @@
  * By Gerald Combs <gerald@wireshark.org>
  * Copyright 1998 Gerald Combs
  *
- * IEEE 802.15.4 - TSCH options implemented 
+ * IEEE 802.15.4 - TSCH options implemented
  * By Jonathan Munoz <jmmunoz86@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
@@ -37,7 +37,7 @@
 /*  Packet Overhead from MAC header + footer (excluding addressing) */
 #define IEEE802154_MAX_FRAME_LEN            127
 #define IEEE802154_FCS_LEN                  2
-#define IEEE802154_FCF_LEN                  2 
+#define IEEE802154_FCF_LEN                  2
 
 /*  Command Frame Identifier Types Definions */
 #define IEEE802154_CMD_ASRQ                 0x01
@@ -127,7 +127,7 @@
 #define IEEE802154_FCF_INTRA_PAN            0x0040  /* known as PAN ID Compression in IEEE 802.15.4-2006 */
 #define IEEE802154_FCF_SEQNR_SUPPR          0x0100  /* Sequence number suppression */               /* according to 2015 spec. */
 #define IEEE802154_FCF_IELIST_PRESENT       0x0200  /* if Information Elements inside the frame*/   /* according to 2015 spec. */
-#define IEEE802154_FCF_DADDR_MASK           0x0C00  /* destination addressing mask */               
+#define IEEE802154_FCF_DADDR_MASK           0x0C00  /* destination addressing mask */
 #define IEEE802154_FCF_VERSION              0x3000
 #define IEEE802154_FCF_SADDR_MASK           0xC000  /* source addressing mask */
 
@@ -145,7 +145,7 @@
 #define IEEE802154_VERSION_2003             0x0
 #define IEEE802154_VERSION_2006             0x1
 #define IEEE802154_VERSION_2015             0x2
- 
+
 /* Address Mode Definitions */
 #define IEEE802154_FCF_ADDR_NONE            0x0000
 #define IEEE802154_FCF_ADDR_SHORT           0x0002
@@ -195,7 +195,7 @@
 #define IEEE802154_P_IE_MLME                          0x01
 
  /*For the Plugtest - Paris 2016, the VENDOR SPECIFIC Payload IE changes its name to 6top group ID */
-#define IEEE802154_P_IE_6TOPGROUPID                   0x02
+#define IEEE802154_P_IE_6TOPGROUPID                   0x03
 #define IEEE802154_P_IE_PAYLOAD_TERM                  0x0F
 
 /* MLME IE Short Sub-list */
@@ -241,7 +241,7 @@
 /* Bit-mask for the Payload Information's Elements header */
 #define IEEE802154_P_IE_LENGTH                      0x07FF
 #define IEEE802154_P_IE_ID                          0x7800
-#define IEEE802154_P_IE_TYPE                        0x8000 
+#define IEEE802154_P_IE_TYPE                        0x8000
 
 /*----- Bit-mask for the Time Correction Header IE ------*/
 #define IEEE802154_H_IE_TIME_CORR_POS_ACK           0x0FFF
@@ -257,9 +257,9 @@
 #define IEEE802154_P_MLME_LONG_ID                   0x7800
 
 /*SIXTOP Bit-mask*/
-#define SIXP_VERSION                               0x0F  
-#define SIXP_CODE                                  0xF0  
-#define SIXP_SFID                                  0xFF   
+#define SIXP_VERSION                               0x0F
+#define SIXP_CODE                                  0xF0
+#define SIXP_SFID                                  0xFF
 
 /* SIXTOP CMD and RC identifiers */
 #define SIXTOP_CMD_ADD                              0x01
@@ -270,7 +270,7 @@
 #define SIXTOP_RC_SUCCESS                           0x06
 #define SIXTOP_RC_VER_ERR                           0x07
 #define SIXTOP_RC_SFID_ERR                          0x08
-#define SIXTOP_RC_BUSY                              0x09 
+#define SIXTOP_RC_BUSY                              0x09
 #define SIXTOP_RC_RESET                             0x0A
 #define SIXTOP_RC_ERR                               0x0B
 
@@ -344,15 +344,15 @@ typedef struct {
 
     /* Payload MLME Information Elements*/
     gboolean    p_ie_mlme_present;
-    gboolean    p_ie_mlme_type; 
+    gboolean    p_ie_mlme_type;
     guint16     p_ie_mlme_sh_lenght;
-    guint8      p_ie_mlme_sh_id;    
+    guint8      p_ie_mlme_sh_id;
     guint16     p_ie_mlme_lg_lenght;
     guint8      p_ie_mlme_lg_id;
- 
+
     /* utilities */
     guint16     keep_dissecting;
-    guint16     keep_dissecting_p_ie;  
+    guint16     keep_dissecting_p_ie;
     guint16     h_ie_size;
 
     union {
