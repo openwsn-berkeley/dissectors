@@ -1,5 +1,7 @@
 # 6TiSCH/IEEE802.15.4e  and 6LoWPAN Wireshark dissectors
 
+Important: latest Wireshark version (from 2.5.0-370-ga3b4731eb) has everything you need to see all the details contained in the 6TiSCH frames.
+
 Note: This dissector is developed based on Wireshark 2.0.3.
 
 These dissectors extend the Wireshark IEEE802.15.4 dissectors with the following:
