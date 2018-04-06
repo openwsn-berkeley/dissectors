@@ -8,22 +8,7 @@
  * By Gerald Combs <gerald@wireshark.org>
  * Copyright 1998 Gerald Combs
  *
- * IEEE 802.15.4 - TSCH options implemented
- * By Jonathan Munoz <jmmunoz86@gmail.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #ifndef PACKET_IEEE802154_H
 #define PACKET_IEEE802154_H
@@ -34,44 +19,51 @@
 /* PANID dissector list is for Decode-As and stateful dissection only. */
 #define IEEE802154_PROTOABBREV_WPAN_PANID   "wpan.panid"
 
+/* Dissector tables */
+#define IEEE802154_HEADER_IE_DTABLE         "wpan.header_ie"
+#define IEEE802154_PAYLOAD_IE_DTABLE        "wpan.payload_ie"
+#define IEEE802154_MLME_IE_DTABLE           "wpan.mlme_ie"
+#define IEEE802154_CMD_VENDOR_DTABLE        "wpan.cmd.vendor"
+
 /*  Packet Overhead from MAC header + footer (excluding addressing) */
 #define IEEE802154_MAX_FRAME_LEN            127
 #define IEEE802154_FCS_LEN                  2
-#define IEEE802154_FCF_LEN                  2
 
-/*  Command Frame Identifier Types Definions */
-#define IEEE802154_CMD_ASRQ                 0x01
-#define IEEE802154_CMD_ASRSP                0x02
-#define IEEE802154_CMD_DISAS                0x03
-#define IEEE802154_CMD_DATA_RQ              0x04
-#define IEEE802154_CMD_PANID_ERR            0x05
-#define IEEE802154_CMD_ORPH_NOTIF           0x06
-#define IEEE802154_CMD_BCN_RQ               0x07
-#define IEEE802154_CMD_COORD_REAL           0x08
-#define IEEE802154_CMD_GTS_REQ              0x09
-#define IEEE802145_CMD_TRLE_MNGMT_REQ       0x0A
-#define IEEE802145_CMD_TRLE_MNGMT_RESP      0x0B
-#define IEEE802145_CMD_DSME_ASSOC_REQ       0x13
-#define IEEE802145_CMD_DSME_ASSOC_RESP      0x14
-#define IEEE802145_CMD_DSME_GTS_ASSOC_REQ   0x15
-#define IEEE802145_CMD_DSME_GTS_ASSOC_RESP  0x16
-#define IEEE802145_CMD_DSME_GTS_NOTIFY      0x17
-#define IEEE802145_CMD_DSME_INF_REQ         0x18
-#define IEEE802145_CMD_DSME_INF_RESP        0x19
-#define IEEE802145_CMD_DSME_BEACON_ALL_NOT  0x1A
-#define IEEE802145_CMD_DSME_BEACON_COLL_NOT 0x1B
-#define IEEE802145_CMD_DSME_LINK_REPORT     0x1C
-#define IEEE802145_CMD_RIT_DATA_REQ         0x20
-#define IEEE802145_CMD_DBS_REQ              0x21
-#define IEEE802145_CMD_DBS_RESP             0x22
-/* MODIFIED JMMS */
-#define IEEE802145_CMD_MAX_ID               0x09
-
+/*  Command Frame Identifier Types Definitions */
+#define IEEE802154_CMD_ASSOC_REQ                0x01
+#define IEEE802154_CMD_ASSOC_RSP                0x02
+#define IEEE802154_CMD_DISASSOC_NOTIFY          0x03
+#define IEEE802154_CMD_DATA_RQ                  0x04
+#define IEEE802154_CMD_PANID_CONFLICT           0x05
+#define IEEE802154_CMD_ORPHAN_NOTIFY            0x06
+#define IEEE802154_CMD_BEACON_REQ               0x07
+#define IEEE802154_CMD_COORD_REALIGN            0x08
+#define IEEE802154_CMD_GTS_REQ                  0x09
+#define IEEE802154_CMD_TRLE_MGMT_REQ            0x0a
+#define IEEE802154_CMD_TRLE_MGMT_RSP            0x0b
+/* 0x0c-0x12 reserved in IEEE802.15.4-2015 */
+#define IEEE802154_CMD_DSME_ASSOC_REQ           0x13
+#define IEEE802154_CMD_DSME_ASSOC_RSP           0x14
+#define IEEE802154_CMD_DSME_GTS_REQ             0x15
+#define IEEE802154_CMD_DSME_GTS_RSP             0x16
+#define IEEE802154_CMD_DSME_GTS_NOTIFY          0x17
+#define IEEE802154_CMD_DSME_INFO_REQ            0x18
+#define IEEE802154_CMD_DSME_INFO_RSP            0x19
+#define IEEE802154_CMD_DSME_BEACON_ALLOC_NOTIFY 0x1a
+#define IEEE802154_CMD_DSME_BEACON_COLL_NOTIFY  0x1b
+#define IEEE802154_CMD_DSME_LINK_REPORT         0x1c
+/* 0x1d-0x1f reserved in IEEE802.15.4-2015 */
+#define IEEE802154_CMD_RIT_DATA_REQ             0x20
+#define IEEE802154_CMD_DBS_REQ                  0x21
+#define IEEE802154_CMD_DBS_RSP                  0x22
+#define IEEE802154_CMD_RIT_DATA_RSP             0x23
+#define IEEE802154_CMD_VENDOR_SPECIFIC          0x24
+/* 0x25-0xff reserved in IEEE802.15.4-2015 */
 
 /*  Definitions for Association Response Command */
-#define IEEE802154_CMD_ASRSP_AS_SUCCESS     0x00
-#define IEEE802154_CMD_ASRSP_PAN_FULL       0x01
-#define IEEE802154_CMD_ASRSP_PAN_DENIED     0x02
+#define IEEE802154_CMD_ASRSP_AS_SUCCESS         0x00
+#define IEEE802154_CMD_ASRSP_PAN_FULL           0x01
+#define IEEE802154_CMD_ASRSP_PAN_DENIED         0x02
 
 /*  Bit Masks for Capability Information Field
     Included in Association Req. command    */
@@ -124,32 +116,59 @@
 #define IEEE802154_FCF_SEC_EN               0x0008
 #define IEEE802154_FCF_FRAME_PND            0x0010
 #define IEEE802154_FCF_ACK_REQ              0x0020
-#define IEEE802154_FCF_INTRA_PAN            0x0040  /* known as PAN ID Compression in IEEE 802.15.4-2006 */
-#define IEEE802154_FCF_SEQNR_SUPPR          0x0100  /* Sequence number suppression */               /* according to 2015 spec. */
-#define IEEE802154_FCF_IELIST_PRESENT       0x0200  /* if Information Elements inside the frame*/   /* according to 2015 spec. */
+#define IEEE802154_FCF_PAN_ID_COMPRESSION   0x0040  /* known as Intra PAN prior to IEEE 802.15.4-2006 */
+#define IEEE802154_FCF_SEQNO_SUPPRESSION    0x0100
+#define IEEE802154_FCF_IE_PRESENT           0x0200
 #define IEEE802154_FCF_DADDR_MASK           0x0C00  /* destination addressing mask */
 #define IEEE802154_FCF_VERSION              0x3000
 #define IEEE802154_FCF_SADDR_MASK           0xC000  /* source addressing mask */
 
 /* Frame Type Definitions */
-#define IEEE802154_FCF_BEACON               0x0000  /* Beacon Frame */
-#define IEEE802154_FCF_DATA                 0x0001  /* Data Frame */
-#define IEEE802154_FCF_ACK                  0x0002  /* Acknowlegement Frame */
-#define IEEE802154_FCF_CMD                  0x0003  /* Command Frame */
-#define IEEE802154_FCF_RESERVED             0x0004  /* Reserved */
-#define IEEE802154_FCF_MULTIPURPOSE         0x0005  /* Multipurpose frame */        /* according to 2015 spec. */
-#define IEEE802154_FCF_FRAGMENT_FRAG        0x0006  /* Fragment or Frak frame */    /* according to 2015 spec. */
-#define IEEE802154_FCF_EXTENDED             0x0007  /* Extended frame */            /* according to 2015 spec. */
+#define IEEE802154_FCF_BEACON                  0x0  /* Beacon Frame */
+#define IEEE802154_FCF_DATA                    0x1  /* Data Frame */
+#define IEEE802154_FCF_ACK                     0x2  /* Acknowlegement Frame */
+#define IEEE802154_FCF_CMD                     0x3  /* MAC Command Frame */
+#define IEEE802154_FCF_RESERVED                0x4  /* reserved */
+#define IEEE802154_FCF_MULTIPURPOSE            0x5  /* Multipurpose */
+#define IEEE802154_FCF_FRAGMENT                0x6  /* Fragment or Frak */
+#define IEEE802154_FCF_EXTENDED                0x7  /* Extended */
 
 /* Frame version definitions. */
-#define IEEE802154_VERSION_2003             0x0
-#define IEEE802154_VERSION_2006             0x1
-#define IEEE802154_VERSION_2015             0x2
+#define IEEE802154_VERSION_2003                0x0
+#define IEEE802154_VERSION_2006                0x1
+#define IEEE802154_VERSION_2015                0x2
+#define IEEE802154_VERSION_RESERVED            0x3
 
 /* Address Mode Definitions */
-#define IEEE802154_FCF_ADDR_NONE            0x0000
-#define IEEE802154_FCF_ADDR_SHORT           0x0002
-#define IEEE802154_FCF_ADDR_EXT             0x0003
+#define IEEE802154_FCF_ADDR_NONE               0x0
+#define IEEE802154_FCF_ADDR_RESERVED           0x1
+#define IEEE802154_FCF_ADDR_SHORT              0x2
+#define IEEE802154_FCF_ADDR_EXT                0x3
+
+/* Header IE Fields */
+#define IEEE802154_HEADER_IE_TYPE_MASK      0x8000
+#define IEEE802154_HEADER_IE_ID_MASK        0x7F80
+#define IEEE802154_HEADER_IE_LENGTH_MASK    0x007F
+
+/* Payload IE Fields */
+#define IEEE802154_PAYLOAD_IE_TYPE_MASK     0x8000
+#define IEEE802154_PAYLOAD_IE_ID_MASK       0x7800
+#define IEEE802154_PAYLOAD_IE_LENGTH_MASK   0x07FF
+
+/* Payload (Nested) Sub IE Fields */
+#define IEEE802154_PSIE_TYPE_MASK           0x8000
+#define IEEE802154_PSIE_ID_MASK_SHORT       0x7F00
+#define IEEE802154_PSIE_LENGTH_MASK_SHORT   0x00FF
+#define IEEE802154_PSIE_ID_MASK_LONG        0x7800
+#define IEEE802154_PSIE_LENGTH_MASK_LONG    0x07FF
+
+/* Enhanced Beacon Filter IE */
+#define IEEE802154_MLME_PSIE_EB_FLT_PJOIN     0x01
+#define IEEE802154_MLME_PSIE_EB_FLT_LQI       0x02
+#define IEEE802154_MLME_PSIE_EB_FLT_PERCENT   0x04
+#define IEEE802154_MLME_PSIE_EB_FLT_ATTR_LEN  0x18
+
+/* Vendor OUIs */
 
 /*  Bit-masks for CC24xx style FCS */
 #define IEEE802154_CC24xx_CORRELATION       0x7F00
@@ -162,117 +181,21 @@
 #define IEEE802154_BCAST_PAN                0xFFFF
 
 /*  Bit mask for PHY length field */
-#define IEEE802154_PHY_LENGTH_MASK          0x7f
+#define IEEE802154_PHY_LENGTH_MASK          0x7F
 
 /* Auxiliary Security Header */
-#define IEEE802154_AUX_SEC_LEVEL_MASK       0x07    /* Security Level */
-#define IEEE802154_AUX_KEY_ID_MODE_MASK     0x18    /* Key Identifier Mode */
-#define IEEE802154_AUX_KEY_ID_MODE_SHIFT    3
-#define IEEE802154_AUX_KEY_RESERVED_MASK    0xE0    /* Reserved */
+#define IEEE802154_AUX_SEC_LEVEL_MASK                 0x07  /* Security Level */
+#define IEEE802154_AUX_KEY_ID_MODE_MASK               0x18  /* Key Identifier Mode */
+#define IEEE802154_AUX_KEY_ID_MODE_SHIFT              3
+#define IEEE802154_AUX_FRAME_COUNTER_SUPPRESSION_MASK 0x20  /* 802.15.4-2015 */
+#define IEEE802154_AUX_ASN_IN_NONCE_MASK              0x40  /* 802.15.4-2015 */
+/* Note: 802.15.4-2015 specifies bits 6-7 as reserved, but 6 is used for ASN */
+#define IEEE802154_AUX_CTRL_RESERVED_MASK             0x80  /* Reserved */
 
-/* Header Information Elements' list */ /* according to 2015 spec. */
-#define IEEE802154_H_IE_DA_IE_VENDOR_SPECIFIC_HEADER  0x00
-#define IEEE802154_H_IE_DA                            0x19
-#define IEEE802154_H_IE_CSL                           0x1A
-#define IEEE802154_H_IE_RIT                           0x1B
-#define IEEE802154_H_IE_DSME_PAN_DESC                 0x1C
-#define IEEE802154_H_IE_RDV_TIME                      0x1D
-#define IEEE802154_H_IE_TIME_CORRECTION               0x1E
-#define IEEE802154_H_IE_EXT_DSME_PAN_DESC             0x21
-#define IEEE802154_H_IE_FSCD                          0x22
-#define IEEE802154_H_IE_SIMPL_SF_SPEC                 0x23
-#define IEEE802154_H_IE_SIMPL_GTS                     0x24
-#define IEEE802154_H_IE_LECIM_CAPAB                   0x25
-#define IEEE802154_H_IE_TRLE_DESC                     0x26
-#define IEEE802154_H_IE_RCC_CAPAB                     0x27
-#define IEEE802154_H_IE_RCCN_DESC                     0x28
-#define IEEE802154_H_IE_GLOBAL_TIME                   0x29
-#define IEEE802154_H_IE_HDR_TERM_1                    0x7E
-#define IEEE802154_H_IE_HDR_TERM_2                    0x7F
-
-/* Payload Information Elements' list */ /* according to 2015 spec. */
-#define IEEE802154_P_IE_ESDU                          0x00
-#define IEEE802154_P_IE_MLME                          0x01
-
- /*For the Plugtest - Paris 2016, the VENDOR SPECIFIC Payload IE changes its name to 6top group ID */
-#define IEEE802154_P_IE_6TOPGROUPID                   0x03
-#define IEEE802154_P_IE_PAYLOAD_TERM                  0x0F
-
-/* MLME IE Short Sub-list */
-#define IEEE802154_P_IE_TSCH_SYNC_SH                  0x1A
-#define IEEE802154_P_IE_TSCH_SLOTFR_LINK_SH           0x1B
-#define IEEE802154_P_IE_TSCH_TIMESLOT_SH              0x1C
-#define IEEE802154_P_IE_HOPPING_TIMING_SH             0x1D
-#define IEEE802154_P_IE_ENHACED_BEACON_FILTER_SH      0x1E
-#define IEEE802154_P_IE_MAC_METRICS_SH                0x1F
-#define IEEE802154_P_IE_ALL_MAC_METRICS_SH            0x20
-#define IEEE802154_P_IE_COEXISTENCE_SPEC_SH           0x21
-#define IEEE802154_P_IE_SUN_DEVICE_CAPABILITIES_SH    0x22
-#define IEEE802154_P_IE_SUN_FSK_GEN_PHY_SH            0x23
-#define IEEE802154_P_IE_MODE_SWITCH_PARAMETER_SH      0x24
-#define IEEE802154_P_IE_PHY_PARAMETER_CHANGE_SH       0x25
-#define IEEE802154_P_IE_O_QPSK_PHY_MODE_SH            0x26
-#define IEEE802154_P_IE_PCA_ALLOCATION_SH             0x27
-#define IEEE802154_P_IE_DSSS_OPER_MODE_SH             0x28
-#define IEEE802154_P_IE_FSK_OPER_MODE_SH              0x29
-#define IEEE802154_P_IE_TVWS_PHY_OPE_MODE_SH          0x2B
-#define IEEE802154_P_IE_TVWS_DEVICE_CAPAB_SH          0x2C
-#define IEEE802154_P_IE_TVWS_DEVICE_CATEG_SH          0x2D
-#define IEEE802154_P_IE_TVWS_DEVICE_IDENTIF_SH        0x2E
-#define IEEE802154_P_IE_TVWS_DEVICE_LOCATION_SH       0x2F
-#define IEEE802154_P_IE_TVWS_CH_INFOR_QUERY_SH        0x30
-#define IEEE802154_P_IE_TVWS_CH_INFOR_SOURCE_SH       0x31
-#define IEEE802154_P_IE_CTM_SH                        0x32
-#define IEEE802154_P_IE_TIMESTAMP_SH                  0x33
-#define IEEE802154_P_IE_TIMESTAMP_DIFF_SH             0x34
-#define IEEE802154_P_IE_TMCP_SPECIFICATION_SH         0x35
-#define IEEE802154_P_IE_RCC_PHY_OPER_MODE_SH          0x36
-
-/* MLME IE Long Sub-list */
-#define IEEE802154_P_IE_VENDOR_SPECIFIC_LG            0x8
-#define IEEE802154_P_IE_CHANNEL_HOPPING_LG            0x9
-
-/* ---------------------------------------------------------------------  */
-/* Bit-mask for the Header Information's Elements header */
-#define IEEE802154_H_IE_LENGTH                      0x007F
-#define IEEE802154_H_IE_ID                          0x7F80
-#define IEEE802154_H_IE_TYPE                        0x8000
-
-/* Bit-mask for the Payload Information's Elements header */
-#define IEEE802154_P_IE_LENGTH                      0x07FF
-#define IEEE802154_P_IE_ID                          0x7800
-#define IEEE802154_P_IE_TYPE                        0x8000
-
-/*----- Bit-mask for the Time Correction Header IE ------*/
-#define IEEE802154_H_IE_TIME_CORR_POS_ACK           0x0FFF
-#define IEEE802154_H_IE_TIME_CORR_NEG_ACK           0x8000
-
-/* Bit-mask for the MLME Short Format of Nested IE */
-#define IEEE802154_P_MLME_SHORT_LENGTH              0x00FF
-#define IEEE802154_P_MLME_SHORT_ID                  0x7F00
-#define IEEE802154_P_MLME_TYPE                      0x8000
-
-/* Bit-mask for the MLME Long Format of Nested IE */
-#define IEEE802154_P_MLME_LONG_LENGTH               0x07FF
-#define IEEE802154_P_MLME_LONG_ID                   0x7800
-
-/*SIXTOP Bit-mask*/
-#define SIXP_VERSION                               0x0F
-#define SIXP_CODE                                  0xF0
-#define SIXP_SFID                                  0xFF
-
-/* SIXTOP CMD and RC identifiers */
-#define SIXTOP_CMD_ADD                              0x01
-#define SIXTOP_CMD_DELETE                           0x02
-#define SIXTOP_CMD_COUNT                            0x03
-#define SIXTOP_CMD_LIST                             0x04
-#define SIXTOP_CMD_CLEAR                            0x05
-#define SIXTOP_RC_SUCCESS                           0x06
-#define SIXTOP_RC_VER_ERR                           0x07
-#define SIXTOP_RC_SFID_ERR                          0x08
-#define SIXTOP_RC_BUSY                              0x09
-#define SIXTOP_RC_RESET                             0x0A
-#define SIXTOP_RC_ERR                               0x0B
+/* Thread-specific well-known key support */
+#define IEEE802154_THR_WELL_KNOWN_KEY_INDEX 0xff
+#define IEEE802154_THR_WELL_KNOWN_KEY_SRC   0xffffffff
+#define IEEE802154_THR_WELL_KNOWN_EXT_ADDR  0x3506feb823d48712ULL
 
 typedef enum {
     SECURITY_LEVEL_NONE = 0x00,
@@ -292,13 +215,159 @@ typedef enum {
     KEY_ID_MODE_KEY_EXPLICIT_8 = 0x03
 } ieee802154_key_id_mode;
 
+typedef enum {
+    KEY_HASH_NONE = 0x00,
+    KEY_HASH_ZIP = 0x01,
+    KEY_HASH_THREAD = 0x02
+} ieee802154_key_hash;
+
+/* Header IE Element ID */
+#define IEEE802154_HEADER_IE_VENDOR_SPECIFIC 0x00
+/* Reserved 0x01-0x19 */
+#define IEEE802154_HEADER_IE_CSL            0x1a
+#define IEEE802154_HEADER_IE_RIT            0x1b
+#define IEEE802154_HEADER_IE_DSME_PAN       0x1c
+#define IEEE802154_HEADER_IE_RENDEZVOUS     0x1d
+#define IEEE802154_HEADER_IE_TIME_CORR      0x1e
+/* Reserved 0x1f-0x20 */
+#define IEEE802154_HEADER_IE_EXT_DSME_PAN   0x21
+#define IEEE802154_HEADER_IE_FSCD           0x22
+#define IEEE802154_HEADER_IE_SMPL_SUPER_FRM 0x23
+#define IEEE802154_HEADER_IE_SMPL_GTS       0x24
+#define IEEE802154_HEADER_IE_LECIM          0x25
+#define IEEE802154_HEADER_IE_TRLE           0x26
+#define IEEE802154_HEADER_IE_RCC_CAP        0x27
+#define IEEE802154_HEADER_IE_RCCN           0x28
+#define IEEE802154_HEADER_IE_GLOBAL_TIME    0x29
+#define IEEE802154_HEADER_IE_WISUN          0x2a
+#define IEEE802154_HEADER_IE_DA_IE          0x2b
+/* Reserved 0x2c-0x7d */
+#define IEEE802154_HEADER_IE_HT1            0x7e
+#define IEEE802154_HEADER_IE_HT2            0x7f
+/* Reserved 0x80-0xff */
+
+/* Payload IE Group ID */
+#define IEEE802154_PAYLOAD_IE_ESDU           0x0 /* Encapsulated Service Data Unit */
+#define IEEE802154_PAYLOAD_IE_MLME           0x1 /* Media Access Control (MAC) subLayer Management Entity */
+#define IEEE802154_PAYLOAD_IE_VENDOR         0x2 /* Vendor Specific */
+#define IEEE802154_PAYLOAD_IE_MPX            0x3 /* MPX IE (802.15.9) */
+#define IEEE802154_PAYLOAD_IE_WISUN          0x4 /* Wi-SUN IE */
+#define IEEE802154_PAYLOAD_IE_IETF           0x5 /* IETF IE, RFC 8137 */
+/* Reserved 0x6-0xe */
+#define IEEE802154_PAYLOAD_IE_TERMINATION    0xf
+
+/* Payload IE (Nested) Sub ID */
+/* Payload IE (Nested) Sub ID - long format */
+/* 0x0 - 0x7 Reserved */
+/* 0x0 - 0x8 Vendor Specific */
+#define IEEE802154_MLME_SUBIE_CHANNEL_HOPPING            0x9
+/* 0xa - 0xf Reserved */
+/* 0x10 - 0x19 Short Format Reserved */
+#define IEEE802154_MLME_SUBIE_TSCH_SYNCH                 0x1A
+#define IEEE802154_MLME_SUBIE_TSCH_SLOTFR_LINK           0x1B
+#define IEEE802154_MLME_SUBIE_TSCH_TIMESLOT              0x1C
+#define IEEE802154_MLME_SUBIE_HOPPING_TIMING             0x1D
+#define IEEE802154_MLME_SUBIE_ENHANCED_BEACON_FILTER     0x1E
+#define IEEE802154_MLME_SUBIE_MAC_METRICS                0x1F
+#define IEEE802154_MLME_SUBIE_ALL_MAC_METRICS            0x20
+#define IEEE802154_MLME_SUBIE_COEXISTENCE_SPEC           0x21
+#define IEEE802154_MLME_SUBIE_SUN_DEVICE_CAPABILITIES    0x22
+#define IEEE802154_MLME_SUBIE_SUN_FSK_GEN_PHY            0x23
+#define IEEE802154_MLME_SUBIE_MODE_SWITCH_PARAMETER      0x24
+#define IEEE802154_MLME_SUBIE_PHY_PARAMETER_CHANGE       0x25
+#define IEEE802154_MLME_SUBIE_O_QPSK_PHY_MODE            0x26
+#define IEEE802154_MLME_SUBIE_PCA_ALLOCATION             0x27
+#define IEEE802154_MLME_SUBIE_DSSS_OPER_MODE             0x28
+#define IEEE802154_MLME_SUBIE_FSK_OPER_MODE              0x29
+#define IEEE802154_MLME_SUBIE_TVWS_PHY_OPE_MODE          0x2B
+#define IEEE802154_MLME_SUBIE_TVWS_DEVICE_CAPAB          0x2C
+#define IEEE802154_MLME_SUBIE_TVWS_DEVICE_CATEG          0x2D
+#define IEEE802154_MLME_SUBIE_TVWS_DEVICE_IDENTIF        0x2E
+#define IEEE802154_MLME_SUBIE_TVWS_DEVICE_LOCATION       0x2F
+#define IEEE802154_MLME_SUBIE_TVWS_CH_INFOR_QUERY        0x30
+#define IEEE802154_MLME_SUBIE_TVWS_CH_INFOR_SOURCE       0x31
+#define IEEE802154_MLME_SUBIE_CTM                        0x32
+#define IEEE802154_MLME_SUBIE_TIMESTAMP                  0x33
+#define IEEE802154_MLME_SUBIE_TIMESTAMP_DIFF             0x34
+#define IEEE802154_MLME_SUBIE_TMCP_SPECIFICATION         0x35
+#define IEEE802154_MLME_SUBIE_RCC_PHY_OPER_MODE          0x36
+/* 0x37-0x7f Reserved */
+
+/* IETF IE - Sub IE */
+#define IEEE802154_IETF_SUBIE_6TOP  0xC9 /* not formally assigned yet */
+
 /* IEEE 802.15.4 cipher block size. */
-#define IEEE802154_CIPHER_SIZE              16
+#define IEEE802154_CIPHER_SIZE                16
 
 /* Macro to compute the MIC length. */
 #define IEEE802154_MIC_LENGTH(_level_) ((0x2 << ((_level_) & 0x3)) & ~0x3)
 /* Macro to check for payload encryption. */
 #define IEEE802154_IS_ENCRYPTED(_level_) ((_level_) & 0x4)
+
+/*SIXTOP Bit-mask*/
+#define IETF_6TOP_VERSION                0x0F
+#define IETF_6TOP_TYPE                   0x30
+#define IETF_6TOP_FLAGS_RESERVED         0xC0
+#define IETF_6TOP_SEQNUM                 0xFF
+
+/* SIXTOP CMD and RC identifiers */
+#define IETF_6TOP_CMD_ADD              0x01
+#define IETF_6TOP_CMD_DELETE           0x02
+#define IETF_6TOP_CMD_RELOCATE         0x03
+#define IETF_6TOP_CMD_COUNT            0x04
+#define IETF_6TOP_CMD_LIST             0x05
+#define IETF_6TOP_CMD_SIGNAL           0x06
+#define IETF_6TOP_CMD_CLEAR            0x07
+#define IETF_6TOP_RC_SUCCESS           0x00
+#define IETF_6TOP_RC_EOL               0x01
+#define IETF_6TOP_RC_ERR               0x02
+#define IETF_6TOP_RC_RESET             0x03
+#define IETF_6TOP_RC_ERR_VERSION       0x04
+#define IETF_6TOP_RC_ERR_SFID          0x05
+#define IETF_6TOP_RC_ERR_SEQNUM        0x06
+#define IETF_6TOP_RC_ERR_CELLLIST      0x07
+#define IETF_6TOP_RC_ERR_BUSY          0x08
+#define IETF_6TOP_RC_ERR_LOCKED        0x09
+
+/* SIXTOP Message Types */
+#define IETF_6TOP_TYPE_REQUEST         0x00
+#define IETF_6TOP_TYPE_RESPONSE        0x01
+#define IETF_6TOP_TYPE_CONFIRMATION    0x02
+#define IETF_6TOP_TYPE_RESERVED        0x03
+
+/* SIXTOP Cell Options */
+#define IETF_6TOP_CELL_OPTION_TX       0x01
+#define IETF_6TOP_CELL_OPTION_RX       0x02
+#define IETF_6TOP_CELL_OPTION_SHARED   0x04
+#define IETF_6TOP_CELL_OPTION_RESERVED 0xF8
+
+/* IEEE 802.15.9 MPX IE */
+#define IEEE802159_MPX_TRANSFER_TYPE_MASK      0x07
+#define IEEE802159_MPX_TRANSACTION_ID_MASK     0xf8
+#define IEEE802159_MPX_TRANSACTION_ID_SHIFT    0x03
+/* IEEE 802.15.9 Table 19 */
+#define IEEE802159_MPX_FULL_FRAME                 0
+#define IEEE802159_MPX_FULL_FRAME_NO_MUXID        1
+#define IEEE802159_MPX_NON_LAST_FRAGMENT          2
+#define IEEE802159_MPX_LAST_FRAGMENT              4
+#define IEEE802159_MPX_ABORT                      6
+/* IEEE 802.15.9 Table 20 */
+#define IEEE802159_MPX_MULTIPLEX_ID_KMP           1
+#define IEEE802159_MPX_MULTIPLEX_ID_WISUN         2
+/* IEEE 802.15.9 Table 21 */
+#define IEEE802159_MPX_KMP_ID_IEEE8021X           1
+#define IEEE802159_MPX_KMP_ID_HIP                 2
+#define IEEE802159_MPX_KMP_ID_IKEV2               3
+#define IEEE802159_MPX_KMP_ID_PANA                4
+#define IEEE802159_MPX_KMP_ID_DRAGONFLY           5
+#define IEEE802159_MPX_KMP_ID_IEEE80211_4WH       6
+#define IEEE802159_MPX_KMP_ID_IEEE80211_GKH       7
+#define IEEE802159_MPX_KMP_ID_ETSI_TS_102_887_2   8
+#define IEEE802159_MPX_KMP_ID_VENDOR_SPECIFIC   255
+/* Wi-SUN MPX Sub-ID values. */
+#define IEEE802159_MPX_WISUN_SUBID_MHDS           0
+#define IEEE802159_MPX_WISUN_SUBID_6LOWPAN        1
+#define IEEE802159_MPX_WISUN_SUBID_SECURITY       2
 
 /*  Structure containing information regarding all necessary packet fields. */
 typedef struct {
@@ -308,14 +377,14 @@ typedef struct {
     gint32      dst_addr_mode;
     gint32      src_addr_mode;
     gboolean    security_enable;
-    gboolean    seqnr_suppresion;
-    gboolean    ielist_present;
     gboolean    frame_pending;
     gboolean    ack_request;
-    gboolean    intra_pan;
-
+    gboolean    pan_id_compression;
+    gboolean    seqno_suppression;
+    gboolean    ie_present;
     guint8      seqno;
-
+    /* Determined during processing of Header IE*/
+    gboolean    payload_ie_present;
     /* Addressing Info. */
     guint16     dst_pan;
     guint16     src_pan;
@@ -327,33 +396,9 @@ typedef struct {
     /* Security Info. */
     ieee802154_security_level   security_level;
     ieee802154_key_id_mode      key_id_mode;
+    gboolean    frame_counter_suppression; /* 802.15.4-2015 */
     guint32     frame_counter;
     guint8      key_sequence_counter;    /* Only for 802.15.4-2003 security suite with encryption */
-
-    /* Header Information Elements' header */
-    guint8      h_ie_content_lenght;
-    guint8      h_ie_id;
-    gboolean    h_ie_type;
-    gboolean    p_ie_present;
-
-
-    /* Payload Information Elements' payload */
-    guint16     p_ie_content_lenght;
-    guint8      p_ie_id;
-    gboolean    p_ie_type;
-
-    /* Payload MLME Information Elements*/
-    gboolean    p_ie_mlme_present;
-    gboolean    p_ie_mlme_type;
-    guint16     p_ie_mlme_sh_lenght;
-    guint8      p_ie_mlme_sh_id;
-    guint16     p_ie_mlme_lg_lenght;
-    guint8      p_ie_mlme_lg_id;
-
-    /* utilities */
-    guint16     keep_dissecting;
-    guint16     keep_dissecting_p_ie;
-    guint16     h_ie_size;
 
     union {
         guint32 addr32;
@@ -399,7 +444,117 @@ typedef struct {
     guint16             src16;
     guint16             dst16;
     ieee802154_map_rec *map_rec;
+    void               *packet;
 } ieee802154_hints_t;
+
+typedef enum {
+    DECRYPT_PACKET_SUCCEEDED,
+    DECRYPT_NOT_ENCRYPTED,
+    DECRYPT_FRAME_COUNTER_SUPPRESSION_UNSUPPORTED,
+    DECRYPT_PACKET_TOO_SMALL,
+    DECRYPT_PACKET_NO_EXT_SRC_ADDR,
+    DECRYPT_PACKET_NO_KEY,
+    DECRYPT_PACKET_DECRYPT_FAILED,
+    DECRYPT_PACKET_MIC_CHECK_FAILED
+} ieee802154_decrypt_status;
+
+/* UAT key structure. */
+typedef struct {
+    gchar *pref_key;
+    guint  key_index;
+    ieee802154_key_hash hash_type;
+    guint8 key[IEEE802154_CIPHER_SIZE];
+    guint8 mle_key[IEEE802154_CIPHER_SIZE];
+} ieee802154_key_t;
+
+/* */
+void dissect_ieee802154_superframe      (tvbuff_t *, packet_info *, proto_tree *, guint *);
+void dissect_ieee802154_gtsinfo         (tvbuff_t *, packet_info *, proto_tree *, guint *);
+void dissect_ieee802154_pendaddr        (tvbuff_t *, packet_info *, proto_tree *, guint *);
+void dissect_ieee802154_aux_sec_header_and_key(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, ieee802154_packet *packet, guint *offset);
+void ccm_init_block(gchar *block, gboolean adata, gint M, guint64 addr, guint32 frame_counter, guint8 level, gint ctr_val, const gchar *generic_nonce);
+gboolean ccm_ctr_encrypt(const gchar *key, const gchar *iv, gchar *mic, gchar *data, gint length);
+gboolean ccm_cbc_mac(const gchar *key, const gchar *iv, const gchar *a, gint a_len, const gchar *m, gint m_len, gchar *mic);
+
+proto_tree *ieee802154_create_hie_tree(tvbuff_t *tvb, proto_tree *tree, int hf, gint ett);
+proto_tree *ieee802154_create_pie_tree(tvbuff_t *tvb, proto_tree *tree, int hf, gint ett);
+
+
+/** Even if the FCF Security Enabled flag is set, there is no auxiliary security header present (used by Wi-SUN Netricity) */
+#define IEEE802154_DISSECT_HEADER_OPTION_NO_AUX_SEC_HDR  (1 << 1)
+/**
+ * Dissect the IEEE 802.15.4 header starting from the FCF up to and including the Header IEs (the non-encrypted part)
+ * @param tvb the IEEE 802.15.4 frame
+ * @param pinfo packet info of the currently processed packet
+ * @param tree current protocol tree
+ * @param options bitmask of IEEE802154_DISSECT_HEADER_OPTION_XX flags
+ * @param[out] created_header_tree will be set to the tree created for the header
+ * @param[out] parsed_info will be set to the (wmem allocated) IEEE 802.15.4 packet information
+ * @return the MHR length or 0 if an error occurred
+ */
+guint ieee802154_dissect_header(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, guint options, proto_tree **created_header_tree, ieee802154_packet **parsed_info);
+
+/**
+ * Decrypt the IEEE 802.15.4 payload starting from the Payload IEs
+ *
+ * If the packet is not encrypted, just return the payload.
+ * @param tvb the IEEE 802.15.4 frame
+ * @param mhr_len the size of the IEEE 802.15.4 header (MHR)
+ * @param pinfo packet info of the currently processed packet
+ * @param ieee802154_tree the tree for the IEEE 802.15.4 header/protocol
+ * @param packet the IEEE 802.15.4 packet information
+ * @return the plaintext payload or NULL if decryption failed
+ */
+tvbuff_t* ieee802154_decrypt_payload(tvbuff_t *tvb, guint mhr_len, packet_info *pinfo, proto_tree *ieee802154_tree, ieee802154_packet *packet);
+
+/**
+ * Dissect the IEEE 802.15.4 Payload IEs (if present)
+ * @param tvb the (decrypted) IEEE 802.15.4 payload
+ * @param pinfo packet info of the currently processed packet
+ * @param ieee802154_tree the tree for the IEEE 802.15.4 header/protocol
+ * @param packet the IEEE 802.15.4 packet information
+ * @return the number of bytes dissected
+ */
+guint ieee802154_dissect_payload_ies(tvbuff_t *tvb, packet_info *pinfo, proto_tree *ieee802154_tree, ieee802154_packet *packet);
+
+/**
+ * Dissect the IEEE 802.15.4 frame payload (after the Payload IEs)
+ * @param tvb the (decrypted) IEEE 802.15.4 frame payload (after the Payload IEs)
+ * @param pinfo packet info of the currently processed packet
+ * @param ieee802154_tree the tree for the IEEE 802.15.4 header/protocol
+ * @param packet the IEEE 802.15.4 packet information
+ * @param fcs_ok set to FALSE if the FCS verification failed, which is used to suppress some further processing
+ * @return the number of bytes dissected
+ */
+guint ieee802154_dissect_frame_payload(tvbuff_t *tvb, packet_info *pinfo, proto_tree *ieee802154_tree, ieee802154_packet *packet, gboolean fcs_ok);
+
+
+/* Results for the decryption */
+typedef struct {
+    /* Set by decrypt_ieee802154_payload */
+    unsigned char *key;  // not valid after return of decrypt_ieee802154_payload
+    guint key_number;
+    /* Set by the ieee802154_decrypt_func */
+    unsigned char* rx_mic;
+    guint* rx_mic_length;
+    guint aux_offset;
+    guint aux_length;
+    ieee802154_decrypt_status* status;
+} ieee802154_decrypt_info_t;
+
+/** Fill key and alt_key based on the provided information from the frame and an IEEE 802.15.4 preference table entry
+ * and return the number of keys set (0: none, 1: just key, 2: key and alt_key) */
+typedef guint (*ieee802154_set_key_func) (ieee802154_packet *packet, unsigned char *key, unsigned char *alt_key, ieee802154_key_t *uat_key);
+/** Decrypt the payload with the provided information */
+typedef tvbuff_t* (*ieee802154_decrypt_func) (tvbuff_t *, guint, packet_info *, ieee802154_packet *, ieee802154_decrypt_info_t*);
+/** Loop over the keys specified in the IEEE 802.15.4 preferences, try to use them with the specified set_key_func
+ * and try to decrypt with the specified decrypt_func
+ */
+tvbuff_t *decrypt_ieee802154_payload(tvbuff_t *tvb, guint offset, packet_info *pinfo, proto_tree *key_tree, ieee802154_packet *packet,
+                                     ieee802154_decrypt_info_t *decrypt_info, ieee802154_set_key_func set_key_func, ieee802154_decrypt_func decrypt_func);
+
+
+extern void register_ieee802154_mac_key_hash_handler(guint hash_identifier, ieee802154_set_key_func key_func);
 
 /* Short to Extended Address Prototypes */
 extern ieee802154_map_rec *ieee802154_addr_update(ieee802154_map_tab_t *, guint16, guint16, guint64,
@@ -411,5 +566,9 @@ extern gboolean ieee802154_long_addr_equal(gconstpointer a, gconstpointer b);
 
 extern gboolean ieee802154_short_addr_invalidate(guint16, guint16, guint);
 extern gboolean ieee802154_long_addr_invalidate(guint64, guint);
+
+extern ieee802154_map_tab_t ieee802154_map;
+
+extern const value_string ieee802154_mpx_kmp_id_vals[];
 
 #endif /* PACKET_IEEE802154_H */
